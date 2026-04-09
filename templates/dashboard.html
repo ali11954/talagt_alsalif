@@ -1,52 +1,164 @@
 {% extends "base.html" %}
 
-{% block title %}لوحة التحكم{% endblock %}
+{% block title %}لوحة التحكم - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s;
+        cursor: pointer;
+        border: none;
+        border-radius: 15px;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .recent-table {
+        font-size: 0.85rem;
+    }
+    .today-sales {
+        background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+    }
+    .today-sales h2 {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+    .badge-pending {
+        background-color: #ffc107;
+        color: #000;
+    }
+    .badge-completed {
+        background-color: #28a745;
+    }
+    .badge-cash {
+        background-color: #28a745;
+    }
+    .badge-credit {
+        background-color: #17a2b8;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="fade-in">
-    <h2 class="mb-4"><i class="fas fa-tachometer-alt"></i> لوحة التحكم</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-tachometer-alt text-primary"></i> لوحة التحكم</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item active">الرئيسية</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <span class="text-muted">
+                <i class="fas fa-calendar-alt"></i> {{ datetime.now().strftime('%Y-%m-%d') }}
+            </span>
+        </div>
+    </div>
 
+    <!-- بطاقات الإحصائيات -->
     <div class="row mb-4">
         <div class="col-md-3 mb-3">
-            <div class="stat-card">
-                <i class="fas fa-boxes"></i>
-                <h3>{{ total_products }}</h3>
-                <p>إجمالي المنتجات</p>
+            <div class="stat-card card text-center">
+                <div class="card-body">
+                    <i class="fas fa-boxes fa-2x text-primary mb-2"></i>
+                    <h3 class="mb-0">{{ total_products }}</h3>
+                    <p class="text-muted mb-0">إجمالي المنتجات</p>
+                    <small class="text-success">
+                        <i class="fas fa-arrow-up"></i> +{{ products_added_this_month|default(0) }} هذا الشهر
+                    </small>
+                </div>
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="stat-card">
-                <i class="fas fa-exclamation-triangle text-warning"></i>
-                <h3>{{ low_stock }}</h3>
-                <p>منتجات منخفضة المخزون</p>
+            <div class="stat-card card text-center">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                    <h3 class="mb-0 {% if low_stock > 0 %}text-warning{% endif %}">{{ low_stock }}</h3>
+                    <p class="text-muted mb-0">منتجات منخفضة المخزون</p>
+                    {% if low_stock > 0 %}
+                    <small class="text-danger">
+                        <i class="fas fa-exclamation-circle"></i> تحتاج إعادة تعبئة
+                    </small>
+                    {% endif %}
+                </div>
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="stat-card">
-                <i class="fas fa-truck"></i>
-                <h3>{{ total_suppliers }}</h3>
-                <p>الموردين</p>
+            <div class="stat-card card text-center">
+                <div class="card-body">
+                    <i class="fas fa-truck fa-2x text-success mb-2"></i>
+                    <h3 class="mb-0">{{ total_suppliers }}</h3>
+                    <p class="text-muted mb-0">الموردين</p>
+                    <small class="text-info">
+                        <i class="fas fa-check-circle"></i> نشط
+                    </small>
+                </div>
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="stat-card">
-                <i class="fas fa-users"></i>
-                <h3>{{ total_customers }}</h3>
-                <p>العملاء</p>
+            <div class="stat-card card text-center">
+                <div class="card-body">
+                    <i class="fas fa-users fa-2x text-info mb-2"></i>
+                    <h3 class="mb-0">{{ total_customers }}</h3>
+                    <p class="text-muted mb-0">العملاء</p>
+                    <small class="text-warning">
+                        <i class="fas fa-hand-holding-usd"></i> {{ debt_customers_count|default(0) }} مدينين
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- صف ثاني من الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="stat-card card text-center">
+                <div class="card-body">
+                    <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                    <h3 class="mb-0">{{ "{:,.2f}".format(monthly_sales|default(0)) }} د.ع</h3>
+                    <p class="text-muted mb-0">مبيعات هذا الشهر</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card card text-center">
+                <div class="card-body">
+                    <i class="fas fa-hand-holding-usd fa-2x text-warning mb-2"></i>
+                    <h3 class="mb-0">{{ "{:,.2f}".format(total_collections_month|default(0)) }} د.ع</h3>
+                    <p class="text-muted mb-0">تحصيلات هذا الشهر</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card card text-center">
+                <div class="card-body">
+                    <i class="fas fa-snowflake fa-2x text-info mb-2"></i>
+                    <h3 class="mb-0">{{ "{:,.2f}".format(total_deposits|default(0)) }} د.ع</h3>
+                    <p class="text-muted mb-0">أمانات التجميد</p>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="row">
+        <!-- آخر المشتريات -->
         <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-shopping-cart"></i> آخر المشتريات
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white">
+                    <i class="fas fa-shopping-cart text-primary"></i>
+                    آخر المشتريات
+                    <a href="{{ url_for('purchases') }}" class="btn btn-sm btn-link float-start">عرض الكل</a>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover mb-0 recent-table">
+                            <thead class="table-light">
                                 <tr>
                                     <th>التاريخ</th>
                                     <th>المورد</th>
@@ -63,10 +175,16 @@
                                     <td>
                                         {% if purchase.status == 'completed' %}
                                             <span class="badge bg-success">مكتملة</span>
+                                        {% elif purchase.cash_status == 'pending' %}
+                                            <span class="badge bg-warning">تنتظر الموافقة</span>
                                         {% else %}
-                                            <span class="badge bg-warning">معلقة</span>
+                                            <span class="badge bg-secondary">معلقة</span>
                                         {% endif %}
                                     </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">لا توجد مشتريات حديثة</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -76,15 +194,18 @@
             </div>
         </div>
 
+        <!-- آخر المبيعات -->
         <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-chart-line"></i> آخر المبيعات
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white">
+                    <i class="fas fa-chart-line text-success"></i>
+                    آخر المبيعات
+                    <a href="{{ url_for('sales') }}" class="btn btn-sm btn-link float-start">عرض الكل</a>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover mb-0 recent-table">
+                            <thead class="table-light">
                                 <tr>
                                     <th>التاريخ</th>
                                     <th>العميل</th>
@@ -104,7 +225,14 @@
                                         {% else %}
                                             <span class="badge bg-info">آجل</span>
                                         {% endif %}
+                                        {% if sale.cash_status == 'pending' %}
+                                            <span class="badge bg-warning ms-1">قيد المراجعة</span>
+                                        {% endif %}
                                     </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">لا توجد مبيعات حديثة</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -115,16 +243,14 @@
         </div>
     </div>
 
+    <!-- إحصائيات اليوم -->
     <div class="row">
         <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-chart-bar"></i> إحصائيات اليوم
-                </div>
-                <div class="card-body text-center">
-                    <h2 class="text-primary">{{ "{:,.2f}".format(today_sales) }} د.ع</h2>
-                    <p>إجمالي مبيعات اليوم</p>
-                </div>
+            <div class="today-sales text-center">
+                <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                <h5 class="mb-1">إجمالي مبيعات اليوم</h5>
+                <h2 class="mb-0">{{ "{:,.2f}".format(today_sales) }} <small class="fs-6">د.ع</small></h2>
+                <small class="opacity-75">آخر تحديث: {{ datetime.now().strftime('%H:%M:%S') }}</small>
             </div>
         </div>
     </div>

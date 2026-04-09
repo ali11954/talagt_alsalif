@@ -34,6 +34,49 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+from datetime import datetime
+
+
+@app.context_processor
+def utility_processor():
+    """جعل الدوال والمتغيرات متاحة في جميع القوالب"""
+
+    def now(format='%Y-%m-%d %H:%M:%S'):
+        return datetime.now().strftime(format)
+
+    return {
+        'datetime': datetime,
+        'now': now,
+        'current_date': datetime.now().strftime('%Y-%m-%d'),
+        'current_time': datetime.now().strftime('%H:%M:%S'),
+        'current_year': datetime.now().year
+    }
+
+    def format_number(value):
+        """تنسيق الأرقام"""
+        try:
+            return f"{float(value):,.2f}"
+        except:
+            return value
+
+    def format_currency(value):
+        """تنسيق العملة"""
+        try:
+            return f"{float(value):,.2f} ر.ي"
+        except:
+            return value
+
+    return {
+        'datetime': datetime,
+        'now': now,
+        'current_date': datetime.now().strftime('%Y-%m-%d'),
+        'current_time': datetime.now().strftime('%H:%M:%S'),
+        'format_number': format_number,
+        'format_currency': format_currency
+    }
+
+
+
 def permission_required(permission):
     """ديكوراتور للتحقق من الصلاحيات"""
 
@@ -92,6 +135,8 @@ def dashboard():
     low_stock = Product.query.filter(Product.quantity < Product.min_quantity).count()
     total_suppliers = Supplier.query.count()
     total_customers = Customer.query.count()
+    debt_customers_count = Customer.query.filter(Customer.balance > 0).count()
+
     today_sales = db.session.query(db.func.sum(SaleOrder.total_amount)).filter(
         db.func.date(SaleOrder.sale_date) == datetime.now().date()
     ).scalar() or 0
@@ -99,6 +144,22 @@ def dashboard():
     total_deposits = db.session.query(db.func.sum(FreezeDeposit.amount)).filter(
         FreezeDeposit.is_returned == False
     ).scalar() or 0
+
+    # مبيعات هذا الشهر
+    first_day_of_month = datetime.now().replace(day=1)
+    monthly_sales = db.session.query(db.func.sum(SaleOrder.total_amount)).filter(
+        SaleOrder.sale_date >= first_day_of_month
+    ).scalar() or 0
+
+    # تحصيلات هذا الشهر
+    total_collections_month = db.session.query(db.func.sum(Collection.amount)).filter(
+        Collection.collection_date >= first_day_of_month
+    ).scalar() or 0
+
+    # المنتجات المضافة هذا الشهر
+    products_added_this_month = Product.query.filter(
+        Product.created_at >= first_day_of_month
+    ).count()
 
     recent_purchases = PurchaseOrder.query.order_by(PurchaseOrder.order_date.desc()).limit(5).all()
     recent_sales = SaleOrder.query.order_by(SaleOrder.sale_date.desc()).limit(5).all()
@@ -108,12 +169,14 @@ def dashboard():
                            low_stock=low_stock,
                            total_suppliers=total_suppliers,
                            total_customers=total_customers,
+                           debt_customers_count=debt_customers_count,
                            today_sales=today_sales,
                            total_deposits=total_deposits,
+                           monthly_sales=monthly_sales,
+                           total_collections_month=total_collections_month,
+                           products_added_this_month=products_added_this_month,
                            recent_purchases=recent_purchases,
                            recent_sales=recent_sales)
-
-
 # ==================== إدارة المستخدمين ====================
 
 @app.route('/users')
@@ -291,6 +354,36 @@ def edit_employee(id):
     positions = ['مسؤول الصندوق', 'أمين المخزن', 'المحصل', 'مسؤول المشتريات', 'مسؤول المبيعات', 'مدير']
     return render_template('employees/edit.html', employee=employee, positions=positions)
 
+
+@app.route('/api/employee/<int:id>/details')
+@login_required
+@permission_required(Permission.MANAGE_EMPLOYEES)
+def employee_details(id):
+    """جلب تفاصيل الموظف"""
+    employee = Employee.query.get_or_404(id)
+
+    user_data = None
+    if employee.user_id:
+        user = User.query.get(employee.user_id)
+        if user:
+            user_data = {
+                'username': user.username,
+                'role': user.role,
+                'is_active': user.is_active
+            }
+
+    return jsonify({
+        'id': employee.id,
+        'full_name': employee.full_name,
+        'position': employee.position,
+        'phone': employee.phone,
+        'email': employee.email,
+        'address': employee.address,
+        'salary': employee.salary,
+        'hire_date': employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else None,
+        'is_active': employee.is_active,
+        'user': user_data
+    })
 
 @app.route('/employees/delete/<int:id>')
 @login_required
@@ -1393,6 +1486,31 @@ def product_details(id):
         'created_at': product.created_at.strftime('%Y-%m-%d') if product.created_at else None
     })
 
+
+@app.route('/reports/inventory')
+@login_required
+@permission_required(Permission.VIEW_REPORTS)
+def inventory_report():
+    products = Product.query.all()
+    total_value = sum(p.quantity * p.purchase_price for p in products)
+    low_stock_products = [p for p in products if p.quantity < p.min_quantity]
+
+    return render_template('reports/inventory.html',
+                           products=products,
+                           total_value=total_value,
+                           low_stock_products=low_stock_products)
+
+
+@app.route('/reports/debts')
+@login_required
+@permission_required(Permission.VIEW_REPORTS)
+def debts_report():
+    debt_customers = Customer.query.filter(Customer.balance > 0).all()
+    total_debts = sum(c.balance for c in debt_customers)
+
+    return render_template('reports/debts.html',
+                           customers=debt_customers,
+                           total_debts=total_debts)
 
 # ==================== تشغيل التطبيق ====================
 
