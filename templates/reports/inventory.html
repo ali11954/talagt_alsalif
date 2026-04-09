@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}تقرير المخزون{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .alert-warning {
+        background: #fff3cd;
+        border-right: 4px solid #ffc107;
+    }
+    .low-stock-row {
+        background-color: #fff3cd !important;
+    }
+    .filter-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="fas fa-boxes"></i> تقرير المخزون</h4>
+        <div class="action-buttons">
+            <button class="btn btn-success btn-sm" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="exportToPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+            <button class="btn btn-info btn-sm" onclick="printReport()">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-right"></i> رجوع
+            </a>
+        </div>
+    </div>
+
+    <!-- فلاتر البحث -->
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-md-3 mb-2">
+                <label class="form-label">بحث باسم المنتج</label>
+                <input type="text" id="searchProduct" class="form-control" placeholder="ابحث عن منتج...">
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">الفئة</label>
+                <select id="filterCategory" class="form-select">
+                    <option value="all">الكل</option>
+                    <option value="water">مياه</option>
+                    <option value="soda">مشروبات غازية</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">حالة المخزون</label>
+                <select id="filterStock" class="form-select">
+                    <option value="all">الكل</option>
+                    <option value="low">مخزون منخفض</option>
+                    <option value="normal">مخزون جيد</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="resetFilters()">
+                    <i class="fas fa-undo"></i> إعادة تعيين
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-boxes fa-2x text-primary mb-2"></i>
+                <h5>إجمالي الأصناف</h5>
+                <h3 class="text-primary" id="totalProducts">{{ products|length }}</h3>
+                <small>منتج متنوع</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+                <h5>إجمالي الكميات</h5>
+                <h3 class="text-success" id="totalQuantity">{{ products|sum(attribute='quantity') }}</h3>
+                <small>قطعة</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-dollar-sign fa-2x text-warning mb-2"></i>
+                <h5>القيمة الإجمالية</h5>
+                <h3 class="text-warning" id="totalValue">{{ "{:,.2f}".format(total_value) }} ر.ي</h3>
+                <small>قيمة المخزون</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+                <h5>منتجات منخفضة</h5>
+                <h3 class="text-danger" id="lowStockCount">{{ low_stock_products|length }}</h3>
+                <small>تحتاج إعادة تعبئة</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- رسم بياني لتوزيع المخزون -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie"></i> توزيع المخزون حسب الفئة
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar"></i> أعلى 5 منتجات من حيث القيمة
+                </div>
+                <div class="card-body">
+                    <canvas id="topProductsChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- تنبيه المنتجات منخفضة المخزون -->
+    {% if low_stock_products %}
+    <div class="alert alert-warning mb-4">
+        <h5><i class="fas fa-exclamation-triangle"></i> تنبيه: المنتجات منخفضة المخزون</h5>
+        <ul class="mb-0">
+            {% for product in low_stock_products %}
+            <li><strong>{{ product.name }}</strong> - الكمية الحالية: {{ product.quantity }} (الحد الأدنى: {{ product.min_quantity }})</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- جدول المخزون -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list"></i> قائمة المخزون
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>المنتج</th>
+                            <th>الفئة</th>
+                            <th>الكمية</th>
+                            <th>سعر الشراء</th>
+                            <th>سعر البيع</th>
+                            <th>القيمة</th>
+                            <th>الموقع</th>
+                            <th>حالة التجميد</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        {% for product in products %}
+                        <tr data-category="{{ product.category }}"
+                            data-quantity="{{ product.quantity }}"
+                            data-min="{{ product.min_quantity }}"
+                            class="{% if product.quantity < product.min_quantity %}low-stock-row{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td>{{ product.name }}</td>
+                            <td>
+                                {% if product.category == 'water' %}
+                                    <span class="badge bg-info">مياه</span>
+                                {% else %}
+                                    <span class="badge bg-primary">غازية</span>
+                                {% endif %}
+                             </td>
+                            <td>
+                                {{ product.quantity }}
+                                {% if product.quantity < product.min_quantity %}
+                                    <span class="badge bg-danger">منخفض</span>
+                                {% endif %}
+                             </td>
+                            <td>{{ "{:,.2f}".format(product.purchase_price) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(product.selling_price) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(product.quantity * product.purchase_price) }} ر.ي</td>
+                            <td>{{ product.location or '-' }}</td>
+                            <td>
+                                {% if product.is_frozen %}
+                                    <span class="badge bg-info"><i class="fas fa-snowflake"></i> مجمد</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">عادي</span>
+                                {% endif %}
+                             </td>
+                            <td>
+                                {% if product.quantity < product.min_quantity %}
+                                    <span class="badge bg-danger">مخزون منخفض</span>
+                                {% else %}
+                                    <span class="badge bg-success">جيد</span>
+                                {% endif %}
+                             </td>
+                         </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-info">
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>الإجمالي:</strong></td>
+                            <td><strong id="footerTotalQuantity">{{ products|sum(attribute='quantity') }}</strong></td>
+                            <td colspan="2"></td>
+                            <td><strong id="footerTotalValue">{{ "{:,.2f}".format(total_value) }} ر.ي</strong></td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.19.2/package/dist/xlsx.full.min.js"></script>
+
+<script>
+// بيانات المنتجات
+const productsData = {{ products | tojson | safe }};
+
+// حساب إحصائيات الفئات
+let waterCount = 0, sodaCount = 0;
+let waterValue = 0, sodaValue = 0;
+
+productsData.forEach(p => {
+    if (p.category === 'water') {
+        waterCount++;
+        waterValue += p.quantity * p.purchase_price;
+    } else {
+        sodaCount++;
+        sodaValue += p.quantity * p.purchase_price;
+    }
+});
+
+// رسم بياني لتوزيع المخزون حسب الفئة
+const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+new Chart(categoryCtx, {
+    type: 'pie',
+    data: {
+        labels: ['مياه', 'مشروبات غازية'],
+        datasets: [{
+            data: [waterCount, sodaCount],
+            backgroundColor: ['#17a2b8', '#007bff'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom' },
+            datalabels: {
+                formatter: (value, ctx) => {
+                    const total = waterCount + sodaCount;
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return `${percentage}%`;
+                },
+                color: '#fff',
+                font: { weight: 'bold', size: 12 }
+            }
+        }
+    }
+});
+
+// أعلى 5 منتجات من حيث القيمة
+const topProducts = [...productsData]
+    .sort((a, b) => (b.quantity * b.purchase_price) - (a.quantity * a.purchase_price))
+    .slice(0, 5);
+
+const topCtx = document.getElementById('topProductsChart').getContext('2d');
+new Chart(topCtx, {
+    type: 'bar',
+    data: {
+        labels: topProducts.map(p => p.name),
+        datasets: [{
+            label: 'القيمة (ر.ي)',
+            data: topProducts.map(p => (p.quantity * p.purchase_price).toFixed(2)),
+            backgroundColor: '#28a745',
+            borderRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.raw.toFixed(2) + ' ر.ي';
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toFixed(0) + ' ر.ي';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// تصفية الجدول
+function filterTable() {
+    const searchTerm = document.getElementById('searchProduct').value.toLowerCase();
+    const categoryFilter = document.getElementById('filterCategory').value;
+    const stockFilter = document.getElementById('filterStock').value;
+
+    const rows = document.querySelectorAll('#inventoryTableBody tr');
+    let visibleCount = 0;
+    let totalQuantity = 0;
+    let totalValue = 0;
+
+    rows.forEach(row => {
+        const productName = row.cells[1].innerText.toLowerCase();
+        const category = row.getAttribute('data-category');
+        const quantity = parseInt(row.getAttribute('data-quantity'));
+        const minQuantity = parseInt(row.getAttribute('data-min'));
+
+        let categoryMatch = categoryFilter === 'all' || category === categoryFilter;
+        let searchMatch = searchTerm === '' || productName.includes(searchTerm);
+
+        let stockMatch = true;
+        if (stockFilter === 'low') stockMatch = quantity < minQuantity;
+        else if (stockFilter === 'normal') stockMatch = quantity >= minQuantity;
+
+        if (categoryMatch && searchMatch && stockMatch) {
+            row.style.display = '';
+            visibleCount++;
+            totalQuantity += quantity;
+            const price = parseFloat(row.cells[6].innerText.replace(' ر.ي', '').replace(',', ''));
+            totalValue += quantity * price;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    document.getElementById('totalProducts').innerText = visibleCount;
+    document.getElementById('totalQuantity').innerText = totalQuantity;
+    document.getElementById('totalValue').innerHTML = totalValue.toFixed(2) + ' ر.ي';
+    document.getElementById('footerTotalQuantity').innerText = totalQuantity;
+    document.getElementById('footerTotalValue').innerHTML = totalValue.toFixed(2) + ' ر.ي';
+}
+
+// إعادة تعيين الفلاتر
+function resetFilters() {
+    document.getElementById('searchProduct').value = '';
+    document.getElementById('filterCategory').value = 'all';
+    document.getElementById('filterStock').value = 'all';
+    filterTable();
+}
+
+// تصدير إلى Excel
+function exportToExcel() {
+    const table = document.getElementById('inventoryTable');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.table_to_sheet(table);
+    XLSX.utils.book_append_sheet(wb, ws, 'المخزون');
+    XLSX.writeFile(wb, `تقرير_المخزون_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+// تصدير إلى PDF
+function exportToPDF() {
+    const element = document.querySelector('.card:last-child');
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `تقرير_المخزون_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
+}
+
+// طباعة التقرير
+function printReport() {
+    window.print();
+}
+
+// تحديث الفلاتر
+document.getElementById('searchProduct').addEventListener('keyup', filterTable);
+document.getElementById('filterCategory').addEventListener('change', filterTable);
+document.getElementById('filterStock').addEventListener('change', filterTable);
+</script>
+
+<style media="print">
+    .action-buttons, .filter-section, .btn, .modal, .no-print, .card-header .btn {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    body {
+        padding: 20px !important;
+        background: white !important;
+    }
+    .low-stock-row {
+        background-color: #fff3cd !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+</style>
+{% endblock %}

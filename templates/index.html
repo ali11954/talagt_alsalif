@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}الرئيسية{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-md-8 text-center">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-snowflake fa-3x"></i>
+                <h3 class="mt-2 mb-0">مرحباً بكم في ثلاجة الصليف</h3>
+            </div>
+            <div class="card-body">
+                <p class="lead">نظام متكامل لإدارة الموردين والمخزون والمبيعات والتحصيل</p>
+                <p>نظام متخصص لإدارة مشروبات المياه والغازية من التوريد إلى التوزيع</p>
+
+                {% if not current_user.is_authenticated %}
+                <div class="mt-4">
+                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+                    </a>
+                </div>
+                {% else %}
+                <div class="mt-4">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-tachometer-alt"></i> الذهاب إلى لوحة التحكم
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <i class="fas fa-truck"></i>
+                    <h3>+50</h3>
+                    <p>مورد معتمد</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <i class="fas fa-boxes"></i>
+                    <h3>+100</h3>
+                    <p>منتج متنوع</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <i class="fas fa-users"></i>
+                    <h3>+200</h3>
+                    <p>عميل نشط</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>+5000</h3>
+                    <p>عملية بيع</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

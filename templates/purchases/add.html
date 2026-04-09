@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}إضافة عملية شراء{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="fas fa-plus"></i> إضافة عملية شراء جديدة</h4>
+    <a href="{{ url_for('purchases') }}" class="btn btn-secondary btn-sm">
+        <i class="fas fa-arrow-right"></i> رجوع
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" id="purchaseForm">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">المورد *</label>
+                    <select name="supplier_id" class="form-select" required>
+                        <option value="">اختر المورد</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">نوع الدفع *</label>
+                    <select name="payment_type" class="form-select" required>
+                        <option value="cash">نقدي</option>
+                        <option value="credit">آجل</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">إضافة منتج</label>
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <select id="productSelect" class="form-select">
+                            <option value="">اختر منتج موجود</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}" data-price="{{ product.purchase_price }}" data-name="{{ product.name }}">
+                                {{ product.name }} ({{ product.quantity }} متبقي)
+                            </option>
+                            {% endfor %}
+                            <option value="new">+ منتج جديد</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" id="newProductFields" style="display: none;">
+                        <input type="text" id="newProductName" class="form-control" placeholder="اسم المنتج الجديد">
+                        <select id="newProductCategory" class="form-select mt-1">
+                            <option value="water">مياه</option>
+                            <option value="soda">مشروبات غازية</option>
+                        </select>
+                        <div class="form-check mt-1">
+                            <input type="checkbox" id="newProductFrozen" class="form-check-input">
+                            <label class="form-check-label small">منتج مجمد</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" id="quantity" class="form-control" placeholder="الكمية">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" id="unitPrice" class="form-control" placeholder="سعر الوحدة">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-primary w-100" onclick="addItem()">
+                            <i class="fas fa-plus"></i> إضافة
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <table class="table table-sm" id="itemsTable">
+                    <thead>
+                        <tr>
+                            <th>المنتج</th>
+                            <th>الكمية</th>
+                            <th>سعر الوحدة</th>
+                            <th>الإجمالي</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>الإجمالي الكلي:</strong></td>
+                            <td><strong id="totalAmount">0.00</strong> د.ع</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">المبلغ المدفوع</label>
+                    <input type="number" step="0.01" name="paid_amount" id="paidAmount" class="form-control" value="0">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">ملاحظات</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+
+            <input type="hidden" name="total_amount" id="hiddenTotal">
+            <input type="hidden" name="items_data" id="itemsData">
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> حفظ العملية
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let items = [];
+
+    // إظهار/إخفاء حقول المنتج الجديد
+    document.getElementById('productSelect').addEventListener('change', function() {
+        const newProductFields = document.getElementById('newProductFields');
+        if (this.value === 'new') {
+            newProductFields.style.display = 'block';
+            document.getElementById('unitPrice').value = '';
+        } else {
+            newProductFields.style.display = 'none';
+            const price = this.options[this.selectedIndex]?.dataset.price;
+            if (price) {
+                document.getElementById('unitPrice').value = price;
+            }
+        }
+    });
+
+    function addItem() {
+        const productSelect = document.getElementById('productSelect');
+        const isNewProduct = productSelect.value === 'new';
+
+        let productId = null;
+        let productName = '';
+        let category = 'water';
+        let isFrozen = false;
+        let freezeDeposit = 0;
+
+        if (isNewProduct) {
+            productName = document.getElementById('newProductName').value;
+            category = document.getElementById('newProductCategory').value;
+            isFrozen = document.getElementById('newProductFrozen').checked;
+            if (!productName) {
+                alert('الرجاء إدخال اسم المنتج الجديد');
+                return;
+            }
+            productId = 'new';
+        } else {
+            productId = parseInt(productSelect.value);
+            productName = productSelect.options[productSelect.selectedIndex]?.text.split(' (')[0];
+            if (!productId) {
+                alert('الرجاء اختيار منتج');
+                return;
+            }
+        }
+
+        const quantity = parseInt(document.getElementById('quantity').value);
+        const unitPrice = parseFloat(document.getElementById('unitPrice').value);
+
+        if (!quantity || !unitPrice) {
+            alert('الرجاء إدخال الكمية والسعر');
+            return;
+        }
+
+        const total = quantity * unitPrice;
+
+        items.push({
+            product_id: productId,
+            product_name: productName,
+            quantity: quantity,
+            unit_price: unitPrice,
+            total: total,
+            category: category,
+            is_frozen: isFrozen,
+            freeze_deposit: 0
+        });
+
+        updateItemsTable();
+
+        // تفريغ الحقول
+        document.getElementById('productSelect').value = '';
+        document.getElementById('newProductFields').style.display = 'none';
+        document.getElementById('newProductName').value = '';
+        document.getElementById('quantity').value = '';
+        document.getElementById('unitPrice').value = '';
+    }
+
+    function removeItem(index) {
+        items.splice(index, 1);
+        updateItemsTable();
+    }
+
+    function updateItemsTable() {
+        const tbody = document.getElementById('itemsBody');
+        tbody.innerHTML = '';
+        let total = 0;
+
+        items.forEach((item, index) => {
+            total += item.total;
+            const row = tbody.insertRow();
+            row.insertCell(0).innerHTML = item.product_name + (item.product_id === 'new' ? ' <span class="badge bg-success">جديد</span>' : '');
+            row.insertCell(1).innerHTML = item.quantity;
+            row.insertCell(2).innerHTML = item.unit_price;
+            row.insertCell(3).innerHTML = item.total.toFixed(2);
+            row.insertCell(4).innerHTML = `<button type="button" class="btn btn-sm btn-danger" onclick="removeItem(${index})">حذف</button>`;
+        });
+
+        document.getElementById('totalAmount').innerHTML = total.toFixed(2);
+        document.getElementById('hiddenTotal').value = total;
+    }
+
+    document.getElementById('purchaseForm').onsubmit = function() {
+        document.getElementById('itemsData').value = JSON.stringify(items.map(item => ({
+            product_id: item.product_id,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            category: item.category,
+            is_frozen: item.is_frozen,
+            selling_price: item.unit_price * 1.2
+        })));
+
+        if (items.length === 0) {
+            alert('الرجاء إضافة منتج واحد على الأقل');
+            return false;
+        }
+
+        return true;
+    };
+</script>
+{% endblock %}

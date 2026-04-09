@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}الموردين - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .supplier-card {
+        transition: all 0.3s;
+        border-right: 4px solid transparent;
+    }
+    .supplier-card:hover {
+        transform: translateY(-3px);
+        border-right-color: #0288D1;
+    }
+    .stats-badge {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+        border-radius: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-truck text-primary"></i> إدارة الموردين</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item active">الموردين</li>
+                </ol>
+            </nav>
+        </div>
+        <a href="{{ url_for('add_supplier') }}" class="btn btn-primary">
+            <i class="fas fa-plus ml-1"></i> مورد جديد
+        </a>
+    </div>
+
+    <!-- بطاقات إحصائيات سريعة -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card supplier-card text-center">
+                <div class="card-body py-3">
+                    <i class="fas fa-building fa-2x text-primary mb-2"></i>
+                    <h5 class="mb-0">{{ suppliers|length }}</h5>
+                    <small class="text-muted">إجمالي الموردين</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card supplier-card text-center">
+                <div class="card-body py-3">
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <h5 class="mb-0">{{ suppliers|selectattr('is_active')|list|length }}</h5>
+                    <small class="text-muted">موردين نشطين</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card supplier-card text-center">
+                <div class="card-body py-3">
+                    <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                    <h5 class="mb-0">{{ "{:,.2f}".format(suppliers|sum(attribute='balance')) }} ر.ي</h5>
+                    <small class="text-muted">إجمالي المديونيات</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card supplier-card text-center">
+                <div class="card-body py-3">
+                    <i class="fas fa-calendar-alt fa-2x text-info mb-2"></i>
+                    <h5 class="mb-0">{{ suppliers|length }}</h5>
+                    <small class="text-muted">عمليات شراء</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <i class="fas fa-list text-primary ml-2"></i>
+            قائمة الموردين
+            <span class="badge bg-primary mr-2">{{ suppliers|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="suppliersTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th><i class="fas fa-building ml-1"></i> اسم المورد</th>
+                            <th><i class="fas fa-user-tie ml-1"></i> شخص التواصل</th>
+                            <th><i class="fas fa-phone ml-1"></i> الهاتف</th>
+                            <th><i class="fas fa-envelope ml-1"></i> البريد الإلكتروني</th>
+                            <th><i class="fas fa-map-marker-alt ml-1"></i> العنوان</th>
+                            <th><i class="fas fa-cog ml-1"></i> الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for supplier in suppliers %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <strong>{{ supplier.name }}</strong>
+                                {% if not supplier.is_active %}
+                                <span class="badge bg-secondary">غير نشط</span>
+                                {% endif %}
+                              </td>
+                            <td>{{ supplier.contact_person or '-' }}</td>
+                            <td>
+                                {% if supplier.phone %}
+                                <a href="tel:{{ supplier.phone }}" class="text-decoration-none">
+                                    <i class="fas fa-phone-alt text-success small"></i> {{ supplier.phone }}
+                                </a>
+                                {% else %}
+                                -
+                                {% endif %}
+                              </td>
+                            <td>
+                                {% if supplier.email %}
+                                <a href="mailto:{{ supplier.email }}" class="text-decoration-none">
+                                    <i class="fas fa-envelope text-info small"></i> {{ supplier.email }}
+                                </a>
+                                {% else %}
+                                -
+                                {% endif %}
+                              </td>
+                            <td>{{ supplier.address|truncate(30) or '-' }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('edit_supplier', id=supplier.id) }}"
+                                       class="btn btn-outline-primary" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('delete_supplier', id=supplier.id) }}"
+                                       class="btn btn-outline-danger"
+                                       onclick="return confirmDelete('{{ supplier.name }}')"
+                                       title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                              </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#suppliersTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json'
+            },
+            pageLength: 25,
+            order: [[0, 'asc']]
+        });
+    });
+
+    function confirmDelete(supplierName) {
+        return confirm(`هل أنت متأكد من حذف المورد "${supplierName}"؟\nلا يمكن التراجع عن هذا الإجراء.`);
+    }
+</script>
+{% endblock %}

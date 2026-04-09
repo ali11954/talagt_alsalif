@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ثلاجة الصليف - نظام إدارة التوزيع{% endblock %}</title>
+    <!-- Bootstrap 5 RTL -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        /* ========== المتغيرات الأساسية ========== */
+        :root {
+            --primary: #2196F3;
+            --secondary: #00BCD4;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --danger: #f44336;
+            --info: #03A9F4;
+            --dark: #333;
+            --light: #f8f9fa;
+            --font-size-xs: 11px;
+            --font-size-sm: 12px;
+            --font-size-base: 13px;
+            --font-size-md: 14px;
+            --font-size-lg: 16px;
+        }
+
+        * {
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #E3F2FD 0%, #B3E5FC 100%);
+            min-height: 100vh;
+            font-size: var(--font-size-base);
+        }
+
+        /* ========== Navbar Styles ========== */
+        .navbar {
+            background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+            padding: 0.3rem 1rem;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white !important;
+        }
+
+        .navbar-brand i {
+            font-size: 1.3rem;
+            background: rgba(255,255,255,0.2);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.9) !important;
+            font-weight: 500;
+            font-size: 13px;
+            padding: 0.4rem 0.8rem !important;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255,255,255,0.15);
+            color: white !important;
+        }
+
+        .nav-link i {
+            margin-left: 6px;
+            font-size: 0.9rem;
+        }
+
+        /* ========== Cards ========== */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(2,136,209,0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 12px 18px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .card-header i {
+            margin-left: 8px;
+        }
+
+        /* ========== Buttons ========== */
+        .btn {
+            border-radius: 8px;
+            padding: 6px 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+            border: none;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(2,136,209,0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #43A047 0%, #66BB6A 100%);
+            border: none;
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #F57C00 0%, #FFB74D 100%);
+            border: none;
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #E53935 0%, #EF5350 100%);
+            border: none;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+
+        /* ========== Tables ========== */
+        .table {
+            font-size: 12px;
+        }
+
+        .table thead th {
+            background: linear-gradient(135deg, #E3F2FD 0%, #B3E5FC 100%);
+            color: #0288D1;
+            font-weight: 600;
+            border: none;
+            padding: 10px;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(2,136,209,0.05);
+        }
+
+        /* ========== Badges ========== */
+        .badge-freeze {
+            background: linear-gradient(135deg, #03A9F4 0%, #4FC3F7 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .badge-lowstock {
+            background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        /* ========== Stat Cards ========== */
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .stat-card i {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-card h3 {
+            font-size: 1.8rem;
+            margin: 10px 0;
+            color: #0288D1;
+        }
+
+        .stat-card p {
+            color: #666;
+            margin: 0;
+            font-size: 13px;
+        }
+
+        /* ========== Alerts ========== */
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 12px 18px;
+        }
+
+        /* ========== Forms ========== */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #0288D1;
+            box-shadow: 0 0 0 0.2rem rgba(2,136,209,0.25);
+        }
+
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        /* ========== Footer ========== */
+        .footer {
+            background: white;
+            padding: 15px;
+            text-align: center;
+            color: #6c757d;
+            border-radius: 12px 12px 0 0;
+            margin-top: 30px;
+            font-size: 12px;
+        }
+
+        /* ========== Responsive ========== */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 0.9rem;
+            }
+
+            .navbar-brand i {
+                font-size: 1.1rem;
+                width: 28px;
+                height: 28px;
+            }
+
+            .nav-link {
+                font-size: 11px;
+                padding: 0.3rem 0.6rem !important;
+            }
+
+            .stat-card h3 {
+                font-size: 1.3rem;
+            }
+
+            .stat-card i {
+                font-size: 2rem;
+            }
+
+            .table {
+                font-size: 10px;
+            }
+
+            .btn {
+                padding: 4px 12px;
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .stat-card {
+                padding: 12px;
+            }
+
+            .stat-card h3 {
+                font-size: 1.1rem;
+            }
+
+            .card-header {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div class="spinner-wrapper" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-snowflake"></i>
+                ثلاجة الصليف
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                {% if current_user.is_authenticated %}
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
+                            <i class="fas fa-tachometer-alt"></i> الرئيسية
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'suppliers' %}active{% endif %}" href="{{ url_for('suppliers') }}">
+                            <i class="fas fa-truck"></i> الموردين
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'purchases' %}active{% endif %}" href="{{ url_for('purchases') }}">
+                            <i class="fas fa-shopping-cart"></i> المشتريات
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}" href="{{ url_for('inventory') }}">
+                            <i class="fas fa-boxes"></i> المخزون
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'customers' %}active{% endif %}" href="{{ url_for('customers') }}">
+                            <i class="fas fa-users"></i> العملاء
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'sales' %}active{% endif %}" href="{{ url_for('sales') }}">
+                            <i class="fas fa-chart-line"></i> المبيعات
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'collections' %}active{% endif %}" href="{{ url_for('collections') }}">
+                            <i class="fas fa-hand-holding-usd"></i> التحصيل
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'employees' %}active{% endif %}" href="{{ url_for('employees') }}">
+                            <i class="fas fa-id-badge"></i> الموظفين
+                        </a>
+                    </li>
+                    {% if current_user.role == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'users_list' %}active{% endif %}" href="{{ url_for('users_list') }}">
+                            <i class="fas fa-users-cog"></i> المستخدمين
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.has_permission('view_cash') %}
+<li class="nav-item">
+    <a class="nav-link {% if request.endpoint and 'cash' in request.endpoint %}active{% endif %}" href="{{ url_for('cash_index') }}">
+        <i class="fas fa-cash-register"></i> الصندوق
+    </a>
+</li>
+{% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}" href="{{ url_for('reports') }}">
+                            <i class="fas fa-file-alt"></i> التقارير
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i class="fas fa-sign-out-alt"></i> خروج
+                        </a>
+                    </li>
+                </ul>
+                <span class="navbar-text text-white me-3">
+                    <i class="fas fa-user-circle"></i> {{ current_user.full_name }}
+                </span>
+                {% else %}
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">
+                            <i class="fas fa-sign-in-alt"></i> دخول
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="container-fluid mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="container-fluid mt-3">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0">
+                <i class="fas fa-snowflake me-2"></i>
+                ثلاجة الصليف - نظام إدارة التوزيع والمخزون © 2026
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // تفعيل tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
+        // دالة لتأكيد الحذف
+        function confirmDelete(message) {
+            return Swal.fire({
+                title: 'هل أنت متأكد؟',
+                text: message || 'هل تريد حذف هذا العنصر؟',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'نعم، احذف',
+                cancelButtonText: 'إلغاء'
+            }).then((result) => {
+                return result.isConfirmed;
+            });
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

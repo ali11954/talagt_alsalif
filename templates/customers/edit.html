@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}تعديل عميل - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .form-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0288D1;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #0288D1;
+        display: inline-block;
+    }
+    .required-field::after {
+        content: "*";
+        color: #dc3545;
+        margin-right: 4px;
+    }
+    .info-text {
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+    .debt-warning {
+        background-color: #fff3cd;
+        border-right: 4px solid #ffc107;
+        padding: 10px 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .credit-progress {
+        height: 8px;
+        border-radius: 4px;
+        margin-top: 8px;
+    }
+    .btn-save {
+        background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+        border: none;
+        padding: 10px 30px;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(2,136,209,0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-user-edit text-primary"></i> تعديل بيانات العميل</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('customers') }}">العملاء</a></li>
+                    <li class="breadcrumb-item active">تعديل عميل</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <a href="{{ url_for('customers') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right ml-1"></i> رجوع إلى العملاء
+            </a>
+        </div>
+    </div>
+
+    <!-- تحذير المديونية إذا كانت مرتفعة -->
+    {% set debt_percentage = (customer.balance / customer.credit_limit * 100) if customer.credit_limit > 0 else 0 %}
+    {% if customer.balance > 0 %}
+    <div class="debt-warning">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-exclamation-triangle text-warning ml-2"></i>
+                <strong>تنبيه: هذا العميل عليه مديونية</strong>
+            </div>
+            <div>
+                <span class="badge bg-warning">المديونية: {{ "{:,.2f}".format(customer.balance) }} ر.ي</span>
+                <span class="badge bg-info">الحد الائتماني: {{ "{:,.2f}".format(customer.credit_limit) }} ر.ي</span>
+                <span class="badge {% if debt_percentage > 80 %}bg-danger{% elif debt_percentage > 50 %}bg-warning{% else %}bg-success{% endif %}">
+                    نسبة الاستخدام: {{ "%.1f"|format(debt_percentage) }}%
+                </span>
+            </div>
+        </div>
+        <div class="progress credit-progress mt-2">
+            <div class="progress-bar {% if debt_percentage > 80 %}bg-danger{% elif debt_percentage > 50 %}bg-warning{% else %}bg-success{% endif %}"
+                 role="progressbar" style="width: {{ debt_percentage }}%">
+            </div>
+        </div>
+        <div class="small text-muted mt-2">
+            <i class="fas fa-info-circle"></i> يمكن تعديل الحد الائتماني ولكن المديونية الحالية ستبقى كما هي
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <i class="fas fa-address-card text-primary ml-2"></i>
+            بيانات العميل: <strong>{{ customer.name }}</strong>
+            <span class="text-muted mr-2 small">(تم الإنشاء: {{ customer.created_at.strftime('%Y-%m-%d') }})</span>
+        </div>
+        <div class="card-body">
+            <form method="POST" id="customerForm">
+                <!-- المعلومات الأساسية -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-user-circle ml-1"></i> المعلومات الأساسية
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required-field">
+                                <i class="fas fa-user ml-1"></i> اسم العميل
+                            </label>
+                            <input type="text" name="name" class="form-control"
+                                   value="{{ customer.name }}" required>
+                            <div class="info-text">الاسم الكامل للعميل أو اسم المنشأة</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required-field">
+                                <i class="fas fa-tag ml-1"></i> نوع العميل
+                            </label>
+                            <select name="type" class="form-select" id="customerType" required>
+                                <option value="grocery" {% if customer.type == 'grocery' %}selected{% endif %}>🏪 بقالة</option>
+                                <option value="shop" {% if customer.type == 'shop' %}selected{% endif %}>🏬 محل تجاري</option>
+                                <option value="event" {% if customer.type == 'event' %}selected{% endif %}>🎉 أعراس ومناسبات</option>
+                            </select>
+                            <div class="info-text" id="typeInfo">
+                                <i class="fas fa-info-circle"></i>
+                                {% if customer.type == 'grocery' %}
+                                    البقالات: تعامل نقدي وآجل، حد ائتماني متوسط
+                                {% elif customer.type == 'shop' %}
+                                    المحلات التجارية: تعامل آجل بشكل أساسي، حد ائتماني مرتفع
+                                {% elif customer.type == 'event' %}
+                                    الأعراس والمناسبات: تعامل آجل، حد ائتماني منخفض
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- معلومات الاتصال -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-phone-alt ml-1"></i> معلومات الاتصال
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-phone ml-1"></i> رقم الهاتف
+                            </label>
+                            <input type="tel" name="phone" class="form-control"
+                                   value="{{ customer.phone or '' }}" id="phoneInput">
+                            <div class="info-text">رقم الهاتف الأساسي للتواصل</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-envelope ml-1"></i> البريد الإلكتروني (اختياري)
+                            </label>
+                            <input type="email" name="email" class="form-control"
+                                   value="{{ customer.email or '' }}">
+                            <div class="info-text">لإرسال الفواتير والإشعارات</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- المعلومات المالية -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-chart-line ml-1"></i> المعلومات المالية
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-credit-card ml-1"></i> الحد الائتماني (ر.ي)
+                            </label>
+                            <input type="number" step="0.01" name="credit_limit" id="creditLimit"
+                                   class="form-control" value="{{ customer.credit_limit }}" min="0">
+                            <div class="info-text">الحد الأقصى للديون المسموح بها للعميل</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-hand-holding-usd ml-1"></i> المديونية الحالية
+                            </label>
+                            <input type="text" class="form-control"
+                                   value="{{ "{:,.2f}".format(customer.balance) }} ر.ي" readonly disabled>
+                            <div class="info-text text-danger">المبلغ المستحق على العميل</div>
+                        </div>
+                    </div>
+
+                    <!-- مؤشر الحد الائتماني -->
+                    <div class="mt-2">
+                        <label class="small text-muted">مستوى الائتمان بعد التعديل:</label>
+                        <div class="progress" style="height: 8px;">
+                            <div id="creditProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="credit-limit-help mt-1">
+                            <span class="text-success">منخفض</span>
+                            <span class="text-warning mx-3">متوسط</span>
+                            <span class="text-danger">مرتفع</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- العنوان -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-map-marker-alt ml-1"></i> العنوان
+                    </h6>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-location-dot ml-1"></i> العنوان التفصيلي
+                            </label>
+                            <textarea name="address" class="form-control" rows="3"
+                                      placeholder="العنوان الكامل للعميل (المنطقة، الشارع، رقم المبنى...)">{{ customer.address or '' }}</textarea>
+                            <div class="info-text">يسهل تحديد موقع العميل للتوصيل</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- معلومات إضافية -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-clipboard-list ml-1"></i> معلومات إضافية
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-calendar-alt ml-1"></i> تاريخ التسجيل
+                            </label>
+                            <input type="text" class="form-control"
+                                   value="{{ customer.created_at.strftime('%Y-%m-%d') }}" disabled>
+                            <div class="info-text">تاريخ إضافة العميل إلى النظام</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-chart-line ml-1"></i> إجمالي المشتريات
+                            </label>
+                            <input type="text" class="form-control"
+                                   value="{{ "{:,.2f}".format(customer.sale_orders|sum(attribute='total_amount')) }} ر.ي" disabled>
+                            <div class="info-text">إجمالي قيمة مشتريات العميل</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ملاحظة -->
+                <div class="alert alert-warning small">
+                    <i class="fas fa-exclamation-triangle ml-2"></i>
+                    <strong>تنبيه:</strong> الحقول التي تحمل علامة <span class="text-danger">*</span> إلزامية.
+                </div>
+
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-save">
+                        <i class="fas fa-save ml-2"></i> تحديث البيانات
+                    </button>
+                    <a href="{{ url_for('customers') }}" class="btn btn-secondary">
+                        <i class="fas fa-times ml-2"></i> إلغاء
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // تحديث مؤشر الحد الائتماني
+    const creditInput = document.getElementById('creditLimit');
+    const creditProgress = document.getElementById('creditProgress');
+    const currentBalance = {{ customer.balance }};
+
+    function updateCreditProgress() {
+        const newLimit = parseFloat(creditInput.value) || 0;
+        let percentage = 0;
+        let color = 'bg-success';
+
+        if (newLimit > 0) {
+            percentage = (currentBalance / newLimit) * 100;
+            if (percentage > 80) {
+                color = 'bg-danger';
+            } else if (percentage > 50) {
+                color = 'bg-warning';
+            } else {
+                color = 'bg-success';
+            }
+        }
+
+        creditProgress.style.width = Math.min(percentage, 100) + '%';
+        creditProgress.className = `progress-bar ${color}`;
+
+        // تغيير لون النص إذا تجاوز الحد
+        if (percentage > 100) {
+            creditProgress.style.width = '100%';
+            creditProgress.classList.add('bg-danger');
+        }
+    }
+
+    creditInput.addEventListener('input', updateCreditProgress);
+    updateCreditProgress();
+
+    // تغيير النص الإرشادي حسب نوع العميل
+    const typeSelect = document.getElementById('customerType');
+    const typeInfo = document.getElementById('typeInfo');
+
+    typeSelect.addEventListener('change', function() {
+        const type = this.value;
+        let infoText = '';
+
+        switch(type) {
+            case 'grocery':
+                infoText = '<i class="fas fa-info-circle"></i> البقالات: تعامل نقدي وآجل، حد ائتماني متوسط';
+                break;
+            case 'shop':
+                infoText = '<i class="fas fa-info-circle"></i> المحلات التجارية: تعامل آجل بشكل أساسي، حد ائتماني مرتفع';
+                break;
+            case 'event':
+                infoText = '<i class="fas fa-info-circle"></i> الأعراس والمناسبات: تعامل آجل، حد ائتماني منخفض';
+                break;
+        }
+        typeInfo.innerHTML = infoText;
+    });
+
+    // تحسين إدخال رقم الهاتف
+    const phoneInput = document.getElementById('phoneInput');
+    phoneInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 0) {
+            e.target.value = value;
+        }
+    });
+
+    // التحقق من صحة النموذج
+    document.getElementById('customerForm').addEventListener('submit', function(e) {
+        const name = document.querySelector('input[name="name"]').value.trim();
+        if (!name) {
+            e.preventDefault();
+            alert('الرجاء إدخال اسم العميل');
+            return false;
+        }
+
+        const creditLimit = parseFloat(creditInput.value);
+        if (creditLimit < 0) {
+            e.preventDefault();
+            alert('الحد الائتماني لا يمكن أن يكون سالباً');
+            return false;
+        }
+
+        if (creditLimit < currentBalance) {
+            if (!confirm(`تحذير: الحد الائتماني الجديد (${creditLimit.toFixed(2)} ر.ي) أقل من المديونية الحالية (${currentBalance.toFixed(2)} ر.ي).\nهل أنت متأكد من متابعة التعديل؟`)) {
+                e.preventDefault();
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    // تنسيق الأرقام تلقائياً
+    creditInput.addEventListener('blur', function() {
+        let value = parseFloat(this.value);
+        if (isNaN(value)) value = 0;
+        this.value = value.toFixed(2);
+    });
+</script>
+
+<style>
+    .required-field::after {
+        content: "*";
+        color: #dc3545;
+        margin-right: 4px;
+    }
+    .credit-limit-help {
+        font-size: 0.7rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}

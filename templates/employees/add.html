@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}إضافة موظف جديد - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .form-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0288D1;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #0288D1;
+        display: inline-block;
+    }
+    .required-field::after {
+        content: "*";
+        color: #dc3545;
+        margin-right: 4px;
+    }
+    .info-text {
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+    .role-badge {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+        border-radius: 20px;
+    }
+    .btn-save {
+        background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+        border: none;
+        padding: 10px 30px;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(2,136,209,0.4);
+    }
+    .password-strength {
+        height: 4px;
+        margin-top: 5px;
+        border-radius: 2px;
+        transition: all 0.3s;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-user-plus text-primary"></i> إضافة موظف جديد</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('employees') }}">الموظفين</a></li>
+                    <li class="breadcrumb-item active">إضافة موظف</li>
+                </ol>
+            </nav>
+        </div>
+        <a href="{{ url_for('employees') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right ml-1"></i> رجوع إلى الموظفين
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <i class="fas fa-id-card text-primary ml-2"></i>
+            بيانات الموظف الجديد
+            <span class="text-muted mr-2 small">(الرجاء إدخال جميع البيانات بدقة)</span>
+        </div>
+        <div class="card-body">
+            <form method="POST" id="employeeForm">
+                <!-- المعلومات الشخصية -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-user-circle ml-1"></i> المعلومات الشخصية
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required-field">
+                                <i class="fas fa-user ml-1"></i> الاسم الكامل
+                            </label>
+                            <input type="text" name="full_name" class="form-control"
+                                   placeholder="مثال: أحمد محمد علي" required autofocus>
+                            <div class="info-text">الاسم الرباعي كما في الهوية الشخصية</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required-field">
+                                <i class="fas fa-briefcase ml-1"></i> المسمى الوظيفي
+                            </label>
+                            <select name="position" class="form-select" id="positionSelect" required>
+                                <option value="">اختر المسمى الوظيفي</option>
+                                {% for pos in positions %}
+                                <option value="{{ pos }}" data-role="
+                                    {% if pos == 'مسؤول الصندوق' %}cashier
+                                    {% elif pos == 'أمين المخزن' %}store_keeper
+                                    {% elif pos == 'المحصل' %}collector
+                                    {% elif pos == 'مسؤول المشتريات' %}purchase_manager
+                                    {% elif pos == 'مسؤول المبيعات' %}sales_manager
+                                    {% elif pos == 'مدير' %}admin
+                                    {% endif %}
+                                ">{{ pos }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="info-text" id="positionInfo">
+                                <i class="fas fa-info-circle"></i> يحدد المسمى الوظيفي صلاحيات الموظف في النظام
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- معلومات الاتصال -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-phone-alt ml-1"></i> معلومات الاتصال
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-phone ml-1"></i> رقم الهاتف
+                            </label>
+                            <input type="tel" name="phone" class="form-control" id="phoneInput"
+                                   placeholder="مثال: 777123456">
+                            <div class="info-text">رقم الهاتف الشخصي للتواصل</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-envelope ml-1"></i> البريد الإلكتروني
+                            </label>
+                            <input type="email" name="email" class="form-control"
+                                   placeholder="example@company.com">
+                            <div class="info-text">البريد الإلكتروني الرسمي</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- العنوان -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-map-marker-alt ml-1"></i> العنوان
+                    </h6>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-location-dot ml-1"></i> العنوان التفصيلي
+                            </label>
+                            <textarea name="address" class="form-control" rows="2"
+                                      placeholder="العنوان الكامل للموظف"></textarea>
+                            <div class="info-text">السكن، المنطقة، الشارع</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- المعلومات الوظيفية -->
+                <div class="form-section">
+                    <h6 class="form-section-title">
+                        <i class="fas fa-chart-line ml-1"></i> المعلومات الوظيفية
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-money-bill ml-1"></i> الراتب الأساسي (ر.ي)
+                            </label>
+                            <input type="number" step="0.01" name="salary" class="form-control"
+                                   value="0" id="salaryInput" min="0">
+                            <div class="info-text">الراتب الشهري للموظف</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-calendar-alt ml-1"></i> تاريخ التعيين
+                            </label>
+                            <input type="date" name="hire_date" class="form-control" value="{{ today }}">
+                            <div class="info-text">تاريخ بدء العمل</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- إنشاء حساب مستخدم -->
+                <div class="card mt-3 mb-3">
+                    <div class="card-header bg-white">
+                        <div class="form-check">
+                            <input type="checkbox" name="create_user" class="form-check-input" id="createUserCheckbox">
+                            <label class="form-check-label" for="createUserCheckbox">
+                                <i class="fas fa-user-plus text-success"></i> إنشاء حساب مستخدم لهذا الموظف
+                            </label>
+                        </div>
+                    </div>
+                    <div class="card-body" id="userFields" style="display: none;">
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle"></i>
+                            سيتم إنشاء حساب مستخدم للدخول إلى النظام. سيتم منح الصلاحيات تلقائياً حسب المسمى الوظيفي.
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label required-field">
+                                    <i class="fas fa-user ml-1"></i> اسم المستخدم
+                                </label>
+                                <input type="text" name="username" class="form-control" id="usernameInput"
+                                       placeholder="أدخل اسم المستخدم">
+                                <div class="info-text">سيستخدم للدخول إلى النظام</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label required-field">
+                                    <i class="fas fa-lock ml-1"></i> كلمة المرور
+                                </label>
+                                <input type="password" name="password" class="form-control" id="passwordInput"
+                                       placeholder="أدخل كلمة المرور">
+                                <div class="password-strength" id="passwordStrength"></div>
+                                <div class="info-text" id="passwordInfo">كلمة مرور قوية تحتوي على حروف وأرقام</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="alert alert-warning small" id="roleAlert" style="display: none;">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span id="roleMessage"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ملاحظة -->
+                <div class="alert alert-warning small">
+                    <i class="fas fa-exclamation-triangle ml-2"></i>
+                    <strong>تنبيه:</strong> الحقول التي تحمل علامة <span class="text-danger">*</span> إلزامية.
+                </div>
+
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-save">
+                        <i class="fas fa-save ml-2"></i> حفظ الموظف
+                    </button>
+                    <button type="reset" class="btn btn-outline-secondary mr-2" onclick="resetForm()">
+                        <i class="fas fa-undo-alt ml-2"></i> إعادة تعيين
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // تحسين إدخال رقم الهاتف
+    const phoneInput = document.getElementById('phoneInput');
+    phoneInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 0) {
+            e.target.value = value;
+        }
+    });
+
+    // قوة كلمة المرور
+    const passwordInput = document.getElementById('passwordInput');
+    const passwordStrength = document.getElementById('passwordStrength');
+    const passwordInfo = document.getElementById('passwordInfo');
+
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        let strength = 0;
+        let message = '';
+        let color = '';
+
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]/)) strength++;
+        if (password.match(/[A-Z]/)) strength++;
+        if (password.match(/[0-9]/)) strength++;
+        if (password.match(/[^a-zA-Z0-9]/)) strength++;
+
+        if (strength <= 2) {
+            message = 'ضعيفة';
+            color = '#dc3545';
+        } else if (strength <= 4) {
+            message = 'متوسطة';
+            color = '#ffc107';
+        } else {
+            message = 'قوية';
+            color = '#28a745';
+        }
+
+        passwordStrength.style.backgroundColor = color;
+        passwordStrength.style.width = (strength * 20) + '%';
+        passwordInfo.innerHTML = `قوة كلمة المرور: ${message}`;
+    });
+
+    // تحديث معلومات الدور الوظيفي
+    const positionSelect = document.getElementById('positionSelect');
+    const roleAlert = document.getElementById('roleAlert');
+    const roleMessage = document.getElementById('roleMessage');
+
+    positionSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const position = selectedOption.value;
+        const role = selectedOption.dataset.role;
+
+        if (role) {
+            let roleText = '';
+            let permissions = '';
+
+            switch(role) {
+                case 'cashier':
+                    roleText = 'مسؤول الصندوق';
+                    permissions = 'صلاحيات: إدارة الصندوق، قيد اليومية، الإغلاق اليومي، التقارير';
+                    break;
+                case 'store_keeper':
+                    roleText = 'أمين المخزن';
+                    permissions = 'صلاحيات: عرض المخزون، تعديل أسعار البيع، التقارير';
+                    break;
+                case 'collector':
+                    roleText = 'المحصل';
+                    permissions = 'صلاحيات: إدارة التحصيل، عرض العملاء المدينين، التقارير';
+                    break;
+                case 'purchase_manager':
+                    roleText = 'مسؤول المشتريات';
+                    permissions = 'صلاحيات: إدارة الموردين، المشتريات، عرض المخزون، التقارير';
+                    break;
+                case 'sales_manager':
+                    roleText = 'مسؤول المبيعات';
+                    permissions = 'صلاحيات: إدارة العملاء، المبيعات، عرض المخزون، التقارير';
+                    break;
+                case 'admin':
+                    roleText = 'مدير';
+                    permissions = 'صلاحيات: جميع صلاحيات النظام';
+                    break;
+            }
+
+            roleAlert.style.display = 'block';
+            roleMessage.innerHTML = `<strong>${position}:</strong> ${permissions}`;
+        } else {
+            roleAlert.style.display = 'none';
+        }
+    });
+
+    // إنشاء اسم مستخدم تلقائي من الاسم الكامل
+    const fullNameInput = document.querySelector('input[name="full_name"]');
+    const usernameInput = document.getElementById('usernameInput');
+
+    fullNameInput.addEventListener('blur', function() {
+        if (!usernameInput.value && this.value) {
+            let username = this.value.trim().replace(/\s+/g, '.').toLowerCase();
+            username = username.replace(/[^a-z0-9.]/g, '');
+            usernameInput.value = username;
+        }
+    });
+
+    // التحقق من صحة النموذج
+    document.getElementById('employeeForm').addEventListener('submit', function(e) {
+        const createUser = document.getElementById('createUserCheckbox').checked;
+
+        if (createUser) {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!username) {
+                e.preventDefault();
+                alert('الرجاء إدخال اسم المستخدم');
+                usernameInput.focus();
+                return false;
+            }
+            if (!password) {
+                e.preventDefault();
+                alert('الرجاء إدخال كلمة المرور');
+                passwordInput.focus();
+                return false;
+            }
+            if (password.length < 6) {
+                e.preventDefault();
+                alert('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+                return false;
+            }
+        }
+
+        const fullName = document.querySelector('input[name="full_name"]').value.trim();
+        if (!fullName) {
+            e.preventDefault();
+            alert('الرجاء إدخال الاسم الكامل');
+            return false;
+        }
+
+        const position = positionSelect.value;
+        if (!position) {
+            e.preventDefault();
+            alert('الرجاء اختيار المسمى الوظيفي');
+            return false;
+        }
+
+        return true;
+    });
+
+    // إظهار/إخفاء حقول المستخدم
+    document.getElementById('createUserCheckbox').addEventListener('change', function() {
+        const userFields = document.getElementById('userFields');
+        if (this.checked) {
+            userFields.style.display = 'block';
+            document.querySelector('input[name="username"]').required = true;
+            document.querySelector('input[name="password"]').required = true;
+        } else {
+            userFields.style.display = 'none';
+            document.querySelector('input[name="username"]').required = false;
+            document.querySelector('input[name="password"]').required = false;
+        }
+    });
+
+    // إعادة تعيين النموذج
+    function resetForm() {
+        if (confirm('هل أنت متأكد من إعادة تعيين جميع الحقول؟')) {
+            document.getElementById('employeeForm').reset();
+            document.getElementById('userFields').style.display = 'none';
+            document.getElementById('createUserCheckbox').checked = false;
+            passwordStrength.style.width = '0%';
+            passwordStrength.style.backgroundColor = '';
+            roleAlert.style.display = 'none';
+            document.querySelector('input[name="full_name"]').focus();
+        }
+    }
+
+    // تنسيق الراتب
+    const salaryInput = document.getElementById('salaryInput');
+    salaryInput.addEventListener('blur', function() {
+        let value = parseFloat(this.value);
+        if (isNaN(value)) value = 0;
+        this.value = value.toFixed(2);
+    });
+</script>
+{% endblock %}

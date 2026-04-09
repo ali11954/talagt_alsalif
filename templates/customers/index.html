@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}العملاء - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .filter-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .customer-row {
+        transition: all 0.3s;
+    }
+    .customer-row:hover {
+        background-color: #e3f2fd !important;
+    }
+    .debt-high {
+        background-color: #fee2e2 !important;
+    }
+    .debt-medium {
+        background-color: #fff3e0 !important;
+    }
+    .credit-progress {
+        height: 6px;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-users text-primary"></i> إدارة العملاء</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item active">العملاء</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="action-buttons">
+            <button class="btn btn-success btn-sm" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="exportToPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+            <button class="btn btn-info btn-sm" onclick="printReport()">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+            <a href="{{ url_for('add_customer') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> عميل جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- فلاتر البحث -->
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-md-3 mb-2">
+                <label class="form-label"><i class="fas fa-search"></i> بحث</label>
+                <input type="text" id="searchInput" class="form-control" placeholder="اسم العميل، الهاتف...">
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label"><i class="fas fa-filter"></i> نوع العميل</label>
+                <select id="typeFilter" class="form-select">
+                    <option value="all">الكل</option>
+                    <option value="grocery">بقالة</option>
+                    <option value="shop">محل تجاري</option>
+                    <option value="event">أعراس ومناسبات</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label"><i class="fas fa-chart-pie"></i> حالة المديونية</label>
+                <select id="debtFilter" class="form-select">
+                    <option value="all">الكل</option>
+                    <option value="has_debt">عليه مديونية</option>
+                    <option value="no_debt">لا توجد مديونية</option>
+                    <option value="high">مديونية عالية (>80%)</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-secondary w-100" onclick="resetFilters()">
+                    <i class="fas fa-undo"></i> إعادة تعيين
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h5>إجمالي العملاء</h5>
+                <h3 class="text-primary" id="totalCustomers">{{ customers|length }}</h3>
+                <small>عميل مسجل</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-hand-holding-usd fa-2x text-danger mb-2"></i>
+                <h5>إجمالي المديونيات</h5>
+                <h3 class="text-danger" id="totalDebts">{{ "{:,.2f}".format(customers|sum(attribute='balance')) }} ر.ي</h3>
+                <small>المبالغ المستحقة</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                <h5>متوسط المديونية</h5>
+                <h3 class="text-warning" id="avgDebt">{{ "{:,.2f}".format(customers|sum(attribute='balance') / customers|length if customers|length > 0 else 0) }} ر.ي</h3>
+                <small>لكل عميل</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+                <h5>عملاء مدينين</h5>
+                <h3 class="text-danger" id="debtorCount">{{ customers|selectattr('balance', 'gt', 0)|list|length }}</h3>
+                <small>عليهم مستحقات</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول العملاء -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <i class="fas fa-list text-primary ml-2"></i>
+            قائمة العملاء
+            <span class="badge bg-primary mr-2" id="filteredCount">{{ customers|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="customersTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th><i class="fas fa-user ml-1"></i> اسم العميل</th>
+                            <th><i class="fas fa-tag ml-1"></i> النوع</th>
+                            <th><i class="fas fa-phone ml-1"></i> الهاتف</th>
+                            <th><i class="fas fa-map-marker-alt ml-1"></i> العنوان</th>
+                            <th><i class="fas fa-hand-holding-usd ml-1"></i> المديونية</th>
+                            <th><i class="fas fa-credit-card ml-1"></i> الحد الائتماني</th>
+                            <th><i class="fas fa-chart-line ml-1"></i> نسبة الاستخدام</th>
+                            <th><i class="fas fa-cog ml-1"></i> الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customersTableBody">
+                        {% for customer in customers|sort(attribute='balance', reverse=true) %}
+                        <tr class="customer-row {% if customer.balance > 0 %}debt-{% if customer.balance > customer.credit_limit * 0.8 %}high{% elif customer.balance > customer.credit_limit * 0.5 %}medium{% endif %}{% endif %}"
+                            data-name="{{ customer.name }}"
+                            data-type="{{ customer.type }}"
+                            data-balance="{{ customer.balance }}"
+                            data-limit="{{ customer.credit_limit }}">
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <strong>{{ customer.name }}</strong>
+                                {% if customer.balance > 0 %}
+                                <span class="badge bg-warning">مدين</span>
+                                {% endif %}
+                                {% if customer.balance > customer.credit_limit %}
+                                <span class="badge bg-danger">تجاوز الحد</span>
+                                {% endif %}
+                              </td>
+                            <td>
+                                {% if customer.type == 'grocery' %}
+                                    <span class="badge bg-info">🏪 بقالة</span>
+                                {% elif customer.type == 'shop' %}
+                                    <span class="badge bg-primary">🏬 محل</span>
+                                {% elif customer.type == 'event' %}
+                                    <span class="badge bg-warning">🎉 أعراس</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ customer.type }}</span>
+                                {% endif %}
+                              </td>
+                            <td>{{ customer.phone or '-' }}</td>
+                            <td>{{ customer.address|truncate(30) or '-' }}</td>
+                            <td class="{% if customer.balance > 0 %}text-danger fw-bold{% else %}text-success{% endif %}">
+                                {{ "{:,.2f}".format(customer.balance) }} ر.ي
+                            </td>
+                            <td>{{ "{:,.2f}".format(customer.credit_limit) }} ر.ي</td>
+                            <td>
+                                {% set percentage = (customer.balance / customer.credit_limit * 100) if customer.credit_limit > 0 else 0 %}
+                                <div class="progress credit-progress">
+                                    <div class="progress-bar {% if percentage > 80 %}bg-danger{% elif percentage > 50 %}bg-warning{% else %}bg-success{% endif %}"
+                                         role="progressbar" style="width: {{ percentage }}%">
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ "%.1f"|format(percentage) }}%</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('edit_customer', id=customer.id) }}" class="btn btn-outline-primary" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-outline-success" onclick="quickCollect({{ customer.id }}, '{{ customer.name }}', {{ customer.balance }})" title="تحصيل">
+                                        <i class="fas fa-money-bill"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info" onclick="showCustomerDetails({{ customer.id }}, '{{ customer.name }}')" title="تفاصيل">
+                                        <i class="fas fa-chart-line"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="5" class="text-end"><strong>الإجمالي:</strong></td>
+                            <td class="text-danger"><strong id="footerTotal">{{ "{:,.2f}".format(customers|sum(attribute='balance')) }} ر.ي</strong></td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة تفاصيل العميل -->
+<div class="modal fade" id="customerDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-chart-line"></i> تفاصيل العميل</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="customerDetailsContent">
+                جاري التحميل...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.19.2/package/dist/xlsx.full.min.js"></script>
+
+<script>
+    // تصفية الجدول
+    function filterTable() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const typeFilter = document.getElementById('typeFilter').value;
+        const debtFilter = document.getElementById('debtFilter').value;
+
+        const rows = document.querySelectorAll('#customersTableBody tr');
+        let visibleCount = 0;
+        let totalDebts = 0;
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name')?.toLowerCase() || '';
+            const type = row.getAttribute('data-type');
+            const balance = parseFloat(row.getAttribute('data-balance') || 0);
+
+            let typeMatch = typeFilter === 'all' || type === typeFilter;
+            let searchMatch = searchTerm === '' || name.includes(searchTerm);
+
+            let debtMatch = true;
+            if (debtFilter === 'has_debt') debtMatch = balance > 0;
+            else if (debtFilter === 'no_debt') debtMatch = balance === 0;
+            else if (debtFilter === 'high') debtMatch = balance > 0;
+
+            if (typeMatch && searchMatch && debtMatch) {
+                row.style.display = '';
+                visibleCount++;
+                totalDebts += balance;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('filteredCount').innerText = visibleCount;
+        document.getElementById('totalCustomers').innerText = visibleCount;
+        document.getElementById('totalDebts').innerHTML = totalDebts.toFixed(2) + ' ر.ي';
+        document.getElementById('avgDebt').innerHTML = (visibleCount > 0 ? (totalDebts / visibleCount).toFixed(2) : 0) + ' ر.ي';
+        document.getElementById('debtorCount').innerText = Array.from(rows).filter(r => {
+            const balance = parseFloat(r.getAttribute('data-balance') || 0);
+            return balance > 0 && r.style.display !== 'none';
+        }).length;
+        document.getElementById('footerTotal').innerHTML = totalDebts.toFixed(2) + ' ر.ي';
+    }
+
+    // إعادة تعيين الفلاتر
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('typeFilter').value = 'all';
+        document.getElementById('debtFilter').value = 'all';
+        filterTable();
+    }
+
+    // تحصيل سريع
+    function quickCollect(customerId, customerName, maxAmount) {
+        if (maxAmount <= 0) {
+            alert('هذا العميل ليس عليه أي مديونية');
+            return;
+        }
+
+        // توجيه إلى صفحة التحصيل مع تعبئة البيانات
+        const url = `{{ url_for('collections') }}?customer_id=${customerId}&amount=${maxAmount}`;
+        window.location.href = url;
+    }
+
+    // عرض تفاصيل العميل
+    function showCustomerDetails(customerId, customerName) {
+        const modalContent = document.getElementById('customerDetailsContent');
+        modalContent.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        new bootstrap.Modal(document.getElementById('customerDetailsModal')).show();
+
+        fetch(`/api/customer/${customerId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                modalContent.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-user"></i> اسم العميل:</strong> ${data.name}</p>
+                            <p><strong><i class="fas fa-phone"></i> رقم الهاتف:</strong> ${data.phone || '-'}</p>
+                            <p><strong><i class="fas fa-map-marker-alt"></i> العنوان:</strong> ${data.address || '-'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-credit-card"></i> الحد الائتماني:</strong> ${data.credit_limit.toFixed(2)} ر.ي</p>
+                            <p><strong><i class="fas fa-hand-holding-usd"></i> المديونية الحالية:</strong> <span class="text-danger">${data.balance.toFixed(2)} ر.ي</span></p>
+                            <p><strong><i class="fas fa-chart-line"></i> نسبة الاستخدام:</strong> ${((data.balance / data.credit_limit) * 100).toFixed(1)}%</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-shopping-cart"></i> إجمالي المشتريات:</strong> ${data.total_purchases.toFixed(2)} ر.ي</p>
+                            <p><strong><i class="fas fa-money-bill"></i> إجمالي المدفوعات:</strong> ${data.total_payments.toFixed(2)} ر.ي</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-calendar"></i> آخر عملية شراء:</strong> ${data.last_purchase || '-'}</p>
+                            <p><strong><i class="fas fa-clock"></i> آخر تحصيل:</strong> ${data.last_collection || '-'}</p>
+                        </div>
+                    </div>
+                    <h6 class="mt-3">سجل المعاملات</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>البيان</th></tr>
+                            </thead>
+                            <tbody>
+                                ${data.transactions.map(t => `
+                                    <tr>
+                                        <td>${t.date}</td>
+                                        <td>${t.type === 'sale' ? '<span class="badge bg-primary">شراء</span>' : '<span class="badge bg-success">تحصيل</span>'}</td>
+                                        <td class="${t.type === 'sale' ? 'text-danger' : 'text-success'}">${t.type === 'sale' ? '+' : '-'} ${t.amount.toFixed(2)} ر.ي</td>
+                                        <td>${t.description}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+    }
+
+    // تصدير إلى Excel
+    function exportToExcel() {
+        const table = document.getElementById('customersTable');
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.table_to_sheet(table);
+        XLSX.utils.book_append_sheet(wb, ws, 'العملاء');
+        XLSX.writeFile(wb, `تقرير_العملاء_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // تصدير إلى PDF
+    function exportToPDF() {
+        const element = document.querySelector('.card:last-child');
+        const opt = {
+            margin: [10, 10, 10, 10],
+            filename: `تقرير_العملاء_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+
+    // طباعة التقرير
+    function printReport() {
+        window.print();
+    }
+
+    // ربط الأحداث
+    document.getElementById('searchInput').addEventListener('keyup', filterTable);
+    document.getElementById('typeFilter').addEventListener('change', filterTable);
+    document.getElementById('debtFilter').addEventListener('change', filterTable);
+</script>
+
+<style media="print">
+    .action-buttons, .filter-section, .btn, .modal, .no-print, .card-header .btn {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    body {
+        padding: 20px !important;
+        background: white !important;
+    }
+    .debt-high, .debt-medium {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+</style>
+{% endblock %}

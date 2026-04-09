@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}قيد اليومية{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="fas fa-book"></i> قيد اليومية</h4>
+    <a href="{{ url_for('add_journal_entry') }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus"></i> قيد جديد
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="journalTable">
+                <thead>
+                    <tr>
+                        <th>التاريخ</th>
+                        <th>رقم الإذن</th>
+                        <th>البيان</th>
+                        <th>مدين</th>
+                        <th>دائن</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td>{{ entry.entry_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ entry.reference_number }}</td>
+                        <td>{{ entry.description }}</td>
+                        <td class="text-danger">{{ "{:,.2f}".format(entry.total_debit) }} د.ع</td>
+                        <td class="text-success">{{ "{:,.2f}".format(entry.total_credit) }} د.ع</td>
+                        <td>
+                            <a href="{{ url_for('delete_journal_entry', id=entry.id) }}"
+                               class="btn btn-sm btn-danger"
+                               onclick="return confirm('هل أنت متأكد من حذف هذا القيد؟')">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#journalTable').DataTable({
+            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json' },
+            order: [[0, 'desc']]
+        });
+    });
+</script>
+{% endblock %}

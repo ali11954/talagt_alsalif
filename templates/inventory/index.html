@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}المخزون - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .filter-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .low-stock-row {
+        background-color: #fff3cd !important;
+    }
+    .critical-stock-row {
+        background-color: #fee2e2 !important;
+    }
+    .freeze-badge {
+        background: linear-gradient(135deg, #03A9F4 0%, #4FC3F7 100%);
+        color: white;
+        padding: 3px 8px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+    }
+    .info-note {
+        background-color: #e3f2fd;
+        border-right: 4px solid #0288D1;
+        padding: 10px 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-boxes text-primary"></i> إدارة المخزون</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item active">المخزون</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="action-buttons">
+            <button class="btn btn-success btn-sm" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="exportToPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+            <button class="btn btn-info btn-sm" onclick="printReport()">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+        </div>
+    </div>
+
+    <!-- ملاحظة -->
+    <div class="info-note">
+        <i class="fas fa-info-circle text-primary ml-2"></i>
+        <strong>ملاحظة:</strong> يتم إضافة المنتجات عبر عمليات الشراء أو أمانات التجميد فقط. لا يمكن إضافة منتج مباشرة.
+    </div>
+
+    <!-- فلاتر البحث -->
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-md-3 mb-2">
+                <label class="form-label"><i class="fas fa-search"></i> بحث</label>
+                <input type="text" id="searchInput" class="form-control" placeholder="اسم المنتج...">
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label"><i class="fas fa-filter"></i> الفئة</label>
+                <select id="categoryFilter" class="form-select">
+                    <option value="all">الكل</option>
+                    <option value="water">مياه</option>
+                    <option value="soda">مشروبات غازية</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label"><i class="fas fa-thermometer-half"></i> حالة التجميد</label>
+                <select id="freezeFilter" class="form-select">
+                    <option value="all">الكل</option>
+                    <option value="frozen">مجمد</option>
+                    <option value="normal">عادي</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-secondary w-100" onclick="resetFilters()">
+                    <i class="fas fa-undo"></i> إعادة تعيين
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-boxes fa-2x text-primary mb-2"></i>
+                <h5>إجمالي المنتجات</h5>
+                <h3 class="text-primary" id="totalProducts">{{ products|length }}</h3>
+                <small>صنف متنوع</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+                <h5>إجمالي الكميات</h5>
+                <h3 class="text-success" id="totalQuantity">{{ products|sum(attribute='quantity') }}</h3>
+                <small>قطعة</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-dollar-sign fa-2x text-warning mb-2"></i>
+                <h5>قيمة المخزون</h5>
+                <h3 class="text-warning" id="totalValue">{{ "{:,.2f}".format(products|sum(attribute='quantity') * products|sum(attribute='purchase_price') / products|length if products|length > 0 else 0) }} ر.ي</h3>
+                <small>القيمة الإجمالية</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+                <h5>منتجات منخفضة</h5>
+                <h3 class="text-danger" id="lowStockCount">{{ products|selectattr('quantity', 'lt', 'min_quantity')|list|length }}</h3>
+                <small>تحتاج إعادة تعبئة</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول المخزون -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <i class="fas fa-list text-primary ml-2"></i>
+            قائمة المخزون
+            <span class="badge bg-primary mr-2" id="filteredCount">{{ products|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="productsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th><i class="fas fa-box ml-1"></i> المنتج</th>
+                            <th><i class="fas fa-tag ml-1"></i> الفئة</th>
+                            <th><i class="fas fa-cubes ml-1"></i> الكمية</th>
+                            <th><i class="fas fa-money-bill ml-1"></i> سعر الشراء</th>
+                            <th><i class="fas fa-chart-line ml-1"></i> سعر البيع</th>
+                            <th><i class="fas fa-chart-bar ml-1"></i> القيمة</th>
+                            <th><i class="fas fa-map-marker-alt ml-1"></i> الموقع</th>
+                            <th><i class="fas fa-snowflake ml-1"></i> أمانة التجميد</th>
+                            <th><i class="fas fa-thermometer-half ml-1"></i> الحالة</th>
+                            <th><i class="fas fa-cog ml-1"></i> الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody">
+                        {% for product in products %}
+                        <tr class="{% if product.quantity < product.min_quantity and product.quantity > 0 %}low-stock-row{% elif product.quantity == 0 %}critical-stock-row{% endif %}"
+                            data-name="{{ product.name }}"
+                            data-category="{{ product.category }}"
+                            data-frozen="{{ product.is_frozen|string }}"
+                            data-quantity="{{ product.quantity }}"
+                            data-min="{{ product.min_quantity }}">
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <strong>{{ product.name }}</strong>
+                                {% if product.quantity == 0 %}
+                                <span class="badge bg-danger">نفذ</span>
+                                {% elif product.quantity < product.min_quantity %}
+                                <span class="badge bg-warning">منخفض</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if product.category == 'water' %}
+                                    <span class="badge bg-info">💧 مياه</span>
+                                {% else %}
+                                    <span class="badge bg-primary">🥤 غازية</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ product.quantity }}</strong>
+                                <small class="text-muted">قطعة</small>
+                            </td>
+                            <td>{{ "{:,.2f}".format(product.purchase_price) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(product.selling_price) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(product.quantity * product.purchase_price) }} ر.ي</td>
+                            <td>{{ product.location or '-' }}</td>
+                            <td>
+                                {% if product.freeze_deposit > 0 %}
+                                    <span class="freeze-badge">
+                                        <i class="fas fa-snowflake"></i> {{ "{:,.2f}".format(product.freeze_deposit) }} ر.ي
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if product.is_frozen %}
+                                    <span class="freeze-badge"><i class="fas fa-snowflake"></i> مجمد</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">🌡️ عادي</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('edit_product', id=product.id) }}" class="btn btn-outline-primary" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-outline-info" onclick="showProductDetails({{ product.id }}, '{{ product.name }}')" title="تفاصيل">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>الإجمالي:</strong></td>
+                            <td><strong id="footerTotalQuantity">{{ products|sum(attribute='quantity') }}</strong> قطعة</td>
+                            <td colspan="2"></td>
+                            <td><strong id="footerTotalValue">{{ "{:,.2f}".format(products|sum(attribute='quantity') * (products|sum(attribute='purchase_price') / products|length if products|length > 0 else 0)) }} ر.ي</strong></td>
+                            <td colspan="4"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة تفاصيل المنتج -->
+<div class="modal fade" id="productDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-box"></i> تفاصيل المنتج</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="productDetailsContent">
+                جاري التحميل...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.19.2/package/dist/xlsx.full.min.js"></script>
+
+<script>
+    // تصفية الجدول
+    function filterTable() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const categoryFilter = document.getElementById('categoryFilter').value;
+        const freezeFilter = document.getElementById('freezeFilter').value;
+
+        const rows = document.querySelectorAll('#productsTableBody tr');
+        let visibleCount = 0;
+        let totalQuantity = 0;
+        let totalValue = 0;
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name')?.toLowerCase() || '';
+            const category = row.getAttribute('data-category');
+            const isFrozen = row.getAttribute('data-frozen') === 'True';
+            const quantity = parseInt(row.getAttribute('data-quantity') || 0);
+
+            let searchMatch = searchTerm === '' || name.includes(searchTerm);
+            let categoryMatch = categoryFilter === 'all' || category === categoryFilter;
+            let freezeMatch = freezeFilter === 'all' ||
+                             (freezeFilter === 'frozen' && isFrozen) ||
+                             (freezeFilter === 'normal' && !isFrozen);
+
+            if (searchMatch && categoryMatch && freezeMatch) {
+                row.style.display = '';
+                visibleCount++;
+                totalQuantity += quantity;
+                const priceText = row.cells[6]?.innerText.replace(' ر.ي', '').replace(',', '') || '0';
+                totalValue += parseFloat(priceText);
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('filteredCount').innerText = visibleCount;
+        document.getElementById('totalProducts').innerText = visibleCount;
+        document.getElementById('totalQuantity').innerText = totalQuantity;
+        document.getElementById('totalValue').innerHTML = totalValue.toFixed(2) + ' ر.ي';
+        document.getElementById('footerTotalQuantity').innerText = totalQuantity;
+        document.getElementById('footerTotalValue').innerHTML = totalValue.toFixed(2) + ' ر.ي';
+
+        // تحديث عدد المنتجات منخفضة المخزون
+        const lowStockCount = Array.from(rows).filter(r => {
+            const qty = parseInt(r.getAttribute('data-quantity') || 0);
+            const min = parseInt(r.getAttribute('data-min') || 0);
+            return qty < min && r.style.display !== 'none';
+        }).length;
+        document.getElementById('lowStockCount').innerText = lowStockCount;
+    }
+
+    // إعادة تعيين الفلاتر
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('categoryFilter').value = 'all';
+        document.getElementById('freezeFilter').value = 'all';
+        filterTable();
+    }
+
+    // عرض تفاصيل المنتج
+    function showProductDetails(productId, productName) {
+        const modalContent = document.getElementById('productDetailsContent');
+        modalContent.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        new bootstrap.Modal(document.getElementById('productDetailsModal')).show();
+
+        fetch(`/api/product/${productId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                modalContent.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-box"></i> اسم المنتج:</strong> ${data.name}</p>
+                            <p><strong><i class="fas fa-tag"></i> الفئة:</strong> ${data.category === 'water' ? 'مياه' : 'مشروبات غازية'}</p>
+                            <p><strong><i class="fas fa-cubes"></i> الكمية الحالية:</strong> ${data.quantity} قطعة</p>
+                            <p><strong><i class="fas fa-chart-line"></i> الحد الأدنى:</strong> ${data.min_quantity} قطعة</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-money-bill"></i> سعر الشراء:</strong> ${data.purchase_price.toFixed(2)} ر.ي</p>
+                            <p><strong><i class="fas fa-chart-line"></i> سعر البيع:</strong> ${data.selling_price.toFixed(2)} ر.ي</p>
+                            <p><strong><i class="fas fa-chart-bar"></i> القيمة الإجمالية:</strong> ${(data.quantity * data.purchase_price).toFixed(2)} ر.ي</p>
+                            <p><strong><i class="fas fa-percent"></i> هامش الربح:</strong> ${(((data.selling_price - data.purchase_price) / data.purchase_price) * 100).toFixed(1)}%</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-map-marker-alt"></i> الموقع:</strong> ${data.location || '-'}</p>
+                            <p><strong><i class="fas fa-thermometer-half"></i> حالة التجميد:</strong> ${data.is_frozen ? '<span class="badge bg-info">مجمد <i class="fas fa-snowflake"></i></span>' : '<span class="badge bg-secondary">عادي</span>'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-snowflake"></i> أمانة التجميد:</strong> ${data.freeze_deposit > 0 ? data.freeze_deposit.toFixed(2) + ' ر.ي' : '-'}</p>
+                            <p><strong><i class="fas fa-calendar-alt"></i> تاريخ الإضافة:</strong> ${data.created_at || '-'}</p>
+                        </div>
+                    </div>
+                    <div class="alert ${data.quantity < data.min_quantity ? 'alert-warning' : 'alert-success'} mt-3">
+                        <i class="fas fa-${data.quantity < data.min_quantity ? 'exclamation-triangle' : 'check-circle'}"></i>
+                        ${data.quantity < data.min_quantity ?
+                            `تنبيه: المخزون منخفض! الكمية الحالية (${data.quantity}) أقل من الحد الأدنى (${data.min_quantity})` :
+                            'المخزون جيد'}
+                    </div>
+                `;
+            })
+            .catch(error => {
+                modalContent.innerHTML = '<div class="alert alert-danger">حدث خطأ في تحميل البيانات</div>';
+            });
+    }
+
+    // تصدير إلى Excel
+    function exportToExcel() {
+        const table = document.getElementById('productsTable');
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.table_to_sheet(table);
+        XLSX.utils.book_append_sheet(wb, ws, 'المخزون');
+        XLSX.writeFile(wb, `تقرير_المخزون_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // تصدير إلى PDF
+    function exportToPDF() {
+        const element = document.querySelector('.card:last-child');
+        const opt = {
+            margin: [10, 10, 10, 10],
+            filename: `تقرير_المخزون_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+
+    // طباعة التقرير
+    function printReport() {
+        window.print();
+    }
+
+    // ربط أحداث الفلاتر
+    document.getElementById('searchInput').addEventListener('keyup', filterTable);
+    document.getElementById('categoryFilter').addEventListener('change', filterTable);
+    document.getElementById('freezeFilter').addEventListener('change', filterTable);
+
+    // تفعيل DataTables
+    $(document).ready(function() {
+        $('#productsTable').DataTable({
+            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json' },
+            pageLength: 25,
+            order: [[3, 'asc']],
+            searching: false,
+            paging: true
+        });
+    });
+</script>
+
+<style media="print">
+    .action-buttons, .filter-section, .btn, .modal, .no-print, .card-header .btn, .dataTables_filter, .dataTables_length, .dataTables_paginate {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    body {
+        padding: 20px !important;
+        background: white !important;
+    }
+    .low-stock-row, .critical-stock-row {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+</style>
+{% endblock %}

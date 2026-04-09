@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}تقرير المبيعات{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .filter-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="fas fa-chart-line"></i> تقرير المبيعات</h4>
+        <div class="action-buttons">
+            <button class="btn btn-success btn-sm" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="exportToPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+            <button class="btn btn-info btn-sm" onclick="printReport()">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-right"></i> رجوع
+            </a>
+        </div>
+    </div>
+
+    <!-- فلتر التاريخ -->
+    <div class="filter-section">
+        <form method="GET" class="row" id="filterForm">
+            <div class="col-md-3 mb-2">
+                <label class="form-label">من تاريخ</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date }}" id="startDate">
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">إلى تاريخ</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date }}" id="endDate">
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">نوع الدفع</label>
+                <select name="payment_type" class="form-select" id="paymentType">
+                    <option value="all">الكل</option>
+                    <option value="cash" {% if payment_type == 'cash' %}selected{% endif %}>نقدي</option>
+                    <option value="credit" {% if payment_type == 'credit' %}selected{% endif %}>آجل</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search"></i> عرض
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                <h5>إجمالي المبيعات</h5>
+                <h3 class="text-primary">{{ "{:,.2f}".format(total_sales) }} ر.ي</h3>
+                <small>إجمالي قيمة المبيعات</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-money-bill fa-2x text-success mb-2"></i>
+                <h5>المبلغ المحصل</h5>
+                <h3 class="text-success">{{ "{:,.2f}".format(total_collected) }} ر.ي</h3>
+                <small>المدفوع نقداً</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-hand-holding-usd fa-2x text-warning mb-2"></i>
+                <h5>المديونية</h5>
+                <h3 class="text-warning">{{ "{:,.2f}".format(total_credit) }} ر.ي</h3>
+                <small>المبالغ المستحقة</small>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-chart-bar fa-2x text-info mb-2"></i>
+                <h5>عدد الفواتير</h5>
+                <h3 class="text-info">{{ sales|length }}</h3>
+                <small>عدد عمليات البيع</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- رسم بياني للمبيعات اليومية -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-line"></i> المبيعات اليومية
+                </div>
+                <div class="card-body">
+                    <canvas id="dailySalesChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول المبيعات -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list"></i> قائمة المبيعات
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="salesTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>رقم الفاتورة</th>
+                            <th>التاريخ</th>
+                            <th>العميل</th>
+                            <th>نوع العميل</th>
+                            <th>المبلغ</th>
+                            <th>المدفوع</th>
+                            <th>المتبقي</th>
+                            <th>نوع الدفع</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sale in sales %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ sale.id }}</td>
+                            <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ sale.customer.name }}</td>
+                            <td>
+                                {% if sale.customer.type == 'grocery' %}
+                                    <span class="badge bg-info">بقالة</span>
+                                {% elif sale.customer.type == 'shop' %}
+                                    <span class="badge bg-primary">محل</span>
+                                {% elif sale.customer.type == 'event' %}
+                                    <span class="badge bg-warning">أعراس</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ sale.customer.type }}</span>
+                                {% endif %}
+                             </td>
+                            <td class="text-primary">{{ "{:,.2f}".format(sale.total_amount) }} ر.ي</td>
+                            <td class="text-success">{{ "{:,.2f}".format(sale.paid_amount) }} ر.ي</td>
+                            <td class="text-danger">{{ "{:,.2f}".format(sale.total_amount - sale.paid_amount) }} ر.ي</td>
+                            <td>
+                                {% if sale.payment_type == 'cash' %}
+                                    <span class="badge bg-success">نقدي</span>
+                                {% else %}
+                                    <span class="badge bg-warning">آجل</span>
+                                {% endif %}
+                             </td>
+                            <td>
+                                {% if sale.status == 'completed' %}
+                                    <span class="badge bg-success">مكتملة</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">معلقة</span>
+                                {% endif %}
+                             </td>
+                         </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-info">
+                        <tr>
+                            <td colspan="5" class="text-end"><strong>الإجمالي:</strong></td>
+                            <td class="text-primary"><strong>{{ "{:,.2f}".format(total_sales) }} ر.ي</strong></td>
+                            <td class="text-success"><strong>{{ "{:,.2f}".format(total_collected) }} ر.ي</strong></td>
+                            <td class="text-danger"><strong>{{ "{:,.2f}".format(total_credit) }} ر.ي</strong></td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.19.2/package/dist/xlsx.full.min.js"></script>
+
+<script>
+// بيانات المبيعات للرسم البياني
+const dailySales = {{ daily_sales | tojson | safe if daily_sales else '[]' }};
+
+// رسم بياني للمبيعات اليومية
+if (dailySales.length > 0) {
+    const ctx = document.getElementById('dailySalesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dailySales.map(d => d.date),
+            datasets: [{
+                label: 'المبيعات (ر.ي)',
+                data: dailySales.map(d => d.total),
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toFixed(2) + ' ر.ي';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(0) + ' ر.ي';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// تصدير إلى Excel
+function exportToExcel() {
+    const table = document.getElementById('salesTable');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.table_to_sheet(table);
+    XLSX.utils.book_append_sheet(wb, ws, 'المبيعات');
+    XLSX.writeFile(wb, `تقرير_المبيعات_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+// تصدير إلى PDF
+function exportToPDF() {
+    const element = document.querySelector('.card:last-child');
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `تقرير_المبيعات_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
+}
+
+// طباعة التقرير
+function printReport() {
+    window.print();
+}
+</script>
+
+<style media="print">
+    .action-buttons, .filter-section, .btn, .modal, .no-print {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    body {
+        padding: 20px !important;
+        background: white !important;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}تقرير المديونيات{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card { transition: all 0.3s; cursor: pointer; }
+    .stat-card:hover { transform: translateY(-5px); }
+    .filter-section { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    .debt-high { background-color: #fee2e2 !important; }
+    .debt-medium { background-color: #fff3e0 !important; }
+    .action-buttons { display: flex; gap: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="fas fa-hand-holding-usd"></i> تقرير المديونيات</h4>
+        <div class="action-buttons">
+            <button class="btn btn-success btn-sm" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn btn-danger btn-sm" onclick="exportToPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button class="btn btn-info btn-sm" onclick="printReport()"><i class="fas fa-print"></i> طباعة</button>
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-right"></i> رجوع</a>
+        </div>
+    </div>
+
+    <!-- فلاتر -->
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-md-4 mb-2">
+                <label class="form-label">بحث باسم العميل</label>
+                <input type="text" id="searchCustomer" class="form-control" placeholder="ابحث عن عميل...">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">نوع العميل</label>
+                <select id="filterType" class="form-select">
+                    <option value="all">الكل</option>
+                    <option value="grocery">بقالة</option>
+                    <option value="shop">محل تجاري</option>
+                    <option value="event">أعراس</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="resetFilters()"><i class="fas fa-undo"></i> إعادة تعيين</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h5>إجمالي العملاء المدينين</h5>
+                <h3 class="text-primary">{{ customers|length }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-hand-holding-usd fa-2x text-danger mb-2"></i>
+                <h5>إجمالي المديونيات</h5>
+                <h3 class="text-danger">{{ "{:,.2f}".format(total_debts) }} ر.ي</h3>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                <h5>متوسط المديونية</h5>
+                <h3 class="text-warning">{{ "{:,.2f}".format(total_debts / customers|length if customers|length > 0 else 0) }} ر.ي</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- إحصائيات حسب النوع -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h5><i class="fas fa-store"></i> البقالات</h5>
+                    <h3 id="groceryCount">0</h3>
+                    <p id="groceryDebts">0 ر.ي</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h5><i class="fas fa-shopping-cart"></i> المحلات</h5>
+                    <h3 id="shopCount">0</h3>
+                    <p id="shopDebts">0 ر.ي</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h5><i class="fas fa-calendar-alt"></i> الأعراس</h5>
+                    <h3 id="eventCount">0</h3>
+                    <p id="eventDebts">0 ر.ي</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول المديونيات -->
+    <div class="card">
+        <div class="card-header"><i class="fas fa-list"></i> قائمة العملاء المدينين</div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="debtsTable">
+                    <thead>
+                        <tr><th>#</th><th>اسم العميل</th><th>النوع</th><th>الهاتف</th><th>المديونية</th><th>الحد الائتماني</th><th>نسبة الاستخدام</th><th>الحالة</th></tr>
+                    </thead>
+                    <tbody id="debtsTableBody">
+                        {% for customer in customers %}
+                        <tr data-type="{{ customer.type }}" data-balance="{{ customer.balance }}" data-limit="{{ customer.credit_limit }}">
+                            <td>{{ loop.index }}</td>
+                            <td>{{ customer.name }}</td>
+                            <td>{% if customer.type == 'grocery' %}<span class="badge bg-info">بقالة</span>{% elif customer.type == 'shop' %}<span class="badge bg-primary">محل</span>{% else %}<span class="badge bg-warning">أعراس</span>{% endif %}</td>
+                            <td>{{ customer.phone or '-' }}</td>
+                            <td class="text-danger fw-bold">{{ "{:,.2f}".format(customer.balance) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(customer.credit_limit) }} ر.ي</td>
+                            <td>{% set pct = (customer.balance / customer.credit_limit * 100) if customer.credit_limit > 0 else 0 %}
+                                <div class="progress" style="height:25px"><div class="progress-bar {% if pct>80 %}bg-danger{% elif pct>50 %}bg-warning{% else %}bg-success{% endif %}" style="width:{{ pct }}%">{{ "%.1f"|format(pct) }}%</div></div>
+                             </td>
+                            <td>{% if pct>80 %}<span class="badge bg-danger">حرج</span>{% elif pct>50 %}<span class="badge bg-warning">تحذير</span>{% else %}<span class="badge bg-success">جيد</span>{% endif %}</td>
+                         </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-info">
+                        <tr><td colspan="4" class="text-end"><strong>الإجمالي:</strong></td><td class="text-danger"><strong>{{ "{:,.2f}".format(total_debts) }} ر.ي</strong></td><td colspan="3"></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.19.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+const customersData = {{ customers | tojson | safe }};
+
+function updateTypeStats() {
+    let gc=0, sc=0, ec=0, gd=0, sd=0, ed=0;
+    customersData.forEach(c => {
+        if(c.type==='grocery'){gc++; gd+=c.balance;}
+        else if(c.type==='shop'){sc++; sd+=c.balance;}
+        else{ec++; ed+=c.balance;}
+    });
+    document.getElementById('groceryCount').innerText=gc;
+    document.getElementById('groceryDebts').innerHTML=gd.toFixed(2)+' ر.ي';
+    document.getElementById('shopCount').innerText=sc;
+    document.getElementById('shopDebts').innerHTML=sd.toFixed(2)+' ر.ي';
+    document.getElementById('eventCount').innerText=ec;
+    document.getElementById('eventDebts').innerHTML=ed.toFixed(2)+' ر.ي';
+}
+
+function filterTable() {
+    const search = document.getElementById('searchCustomer').value.toLowerCase();
+    const type = document.getElementById('filterType').value;
+    const rows = document.querySelectorAll('#debtsTableBody tr');
+    rows.forEach(row => {
+        const name = row.cells[1].innerText.toLowerCase();
+        const ctype = row.getAttribute('data-type');
+        row.style.display = (search==='' || name.includes(search)) && (type==='all' || ctype===type) ? '' : 'none';
+    });
+}
+
+function resetFilters() {
+    document.getElementById('searchCustomer').value = '';
+    document.getElementById('filterType').value = 'all';
+    filterTable();
+}
+
+function exportToExcel() {
+    const table = document.getElementById('debtsTable');
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(table), 'المديونيات');
+    XLSX.writeFile(wb, `تقرير_المديونيات_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+function exportToPDF() {
+    html2pdf().set({margin:[10,10,10,10], filename:`تقرير_المديونيات_${new Date().toISOString().split('T')[0]}.pdf`, jsPDF:{unit:'mm', format:'a4', orientation:'landscape'}}).from(document.querySelector('.card:last-child')).save();
+}
+
+function printReport() { window.print(); }
+
+document.getElementById('searchCustomer').addEventListener('keyup', filterTable);
+document.getElementById('filterType').addEventListener('change', filterTable);
+updateTypeStats();
+</script>
+<style media="print">.action-buttons,.filter-section,.btn{display:none !important}body{padding:20px !important}</style>
+{% endblock %}

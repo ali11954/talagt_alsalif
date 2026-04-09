@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}تسجيل الدخول{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header text-center">
+                <i class="fas fa-snowflake fa-2x"></i>
+                <h4 class="mt-2 mb-0">تسجيل الدخول</h4>
+                <p class="mb-0 small">ثلاجة الصليف - نظام إدارة التوزيع</p>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-user"></i> اسم المستخدم
+                        </label>
+                        <input type="text" name="username" class="form-control" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-lock"></i> كلمة المرور
+                        </label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-sign-in-alt"></i> دخول
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

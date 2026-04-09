@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}الموظفين - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .filter-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .employee-row {
+        transition: all 0.3s;
+    }
+    .employee-row:hover {
+        background-color: #e3f2fd !important;
+    }
+    .role-badge {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        border-radius: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-id-badge text-primary"></i> إدارة الموظفين</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item active">الموظفين</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="action-buttons">
+            <button class="btn btn-success btn-sm" onclick="exportToExcel()">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="exportToPDF()">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+            <button class="btn btn-info btn-sm" onclick="printReport()">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+            <a href="{{ url_for('add_employee') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> إضافة موظف
+            </a>
+        </div>
+    </div>
+
+    <!-- فلاتر البحث -->
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-md-4 mb-2">
+                <label class="form-label"><i class="fas fa-search"></i> بحث</label>
+                <input type="text" id="searchInput" class="form-control" placeholder="الاسم، البريد، الهاتف...">
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label"><i class="fas fa-user-tag"></i> الدور الوظيفي</label>
+                <select id="roleFilter" class="form-select">
+                    <option value="all">الكل</option>
+                    <option value="admin">مدير</option>
+                    <option value="employee">موظف</option>
+                    <option value="cashier">مسؤول صندوق</option>
+                    <option value="store_keeper">أمين مخزن</option>
+                    <option value="collector">محصل</option>
+                    <option value="purchase_manager">مشتريات</option>
+                    <option value="sales_manager">مبيعات</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-secondary w-100" onclick="resetFilters()">
+                    <i class="fas fa-undo"></i> إعادة تعيين
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h5>إجمالي الموظفين</h5>
+                <h3 class="text-primary" id="totalEmployees">{{ employees|length }}</h3>
+                <small>موظف مسجل</small>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-user-check fa-2x text-success mb-2"></i>
+                <h5>موظفين نشطين</h5>
+                <h3 class="text-success" id="activeCount">{{ employees|selectattr('is_active')|list|length }}</h3>
+                <small>يعملون حالياً</small>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card text-center">
+                <i class="fas fa-calendar-alt fa-2x text-warning mb-2"></i>
+                <h5>موظفين جدد</h5>
+                <h3 class="text-warning" id="newCount">{{ new_employees_count }}</h3>
+                <small>هذا الشهر</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول الموظفين -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <i class="fas fa-list text-primary ml-2"></i>
+            قائمة الموظفين
+            <span class="badge bg-primary mr-2" id="filteredCount">{{ employees|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="employeesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th><i class="fas fa-user ml-1"></i> الاسم الكامل</th>
+                            <th><i class="fas fa-briefcase ml-1"></i> المسمى الوظيفي</th>
+                            <th><i class="fas fa-user-circle ml-1"></i> اسم المستخدم</th>
+                            <th><i class="fas fa-phone ml-1"></i> الهاتف</th>
+                            <th><i class="fas fa-envelope ml-1"></i> البريد الإلكتروني</th>
+                            <th><i class="fas fa-money-bill ml-1"></i> الراتب</th>
+                            <th><i class="fas fa-calendar ml-1"></i> تاريخ التعيين</th>
+                            <th><i class="fas fa-circle ml-1"></i> الحالة</th>
+                            <th><i class="fas fa-cog ml-1"></i> الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeesTableBody">
+                        {% for employee in employees %}
+                        <tr class="employee-row"
+                            data-name="{{ employee.full_name }}"
+                            data-role="{{ employee.role }}"
+                            data-email="{{ employee.email }}"
+                            data-phone="{{ employee.phone }}"
+                            data-status="{{ employee.is_active|string }}">
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <strong>{{ employee.full_name }}</strong>
+                                {% if employee.user_id %}
+                                <span class="badge bg-info" title="لديه حساب مستخدم">🔑</span>
+                                {% endif %}
+                              </td>
+                            <td>
+                                {% if employee.role == 'admin' %}
+                                    <span class="role-badge bg-danger text-white">👑 مدير</span>
+                                {% elif employee.role == 'cashier' %}
+                                    <span class="role-badge bg-primary text-white">💰 مسؤول صندوق</span>
+                                {% elif employee.role == 'store_keeper' %}
+                                    <span class="role-badge bg-info text-white">📦 أمين مخزن</span>
+                                {% elif employee.role == 'collector' %}
+                                    <span class="role-badge bg-success text-white">🤝 محصل</span>
+                                {% elif employee.role == 'purchase_manager' %}
+                                    <span class="role-badge bg-warning text-dark">🛒 مشتريات</span>
+                                {% elif employee.role == 'sales_manager' %}
+                                    <span class="role-badge bg-secondary text-white">📈 مبيعات</span>
+                                {% else %}
+                                    <span class="role-badge bg-secondary text-white">{{ employee.role }}</span>
+                                {% endif %}
+                              </td>
+                            <td>{{ employee.user.username if employee.user else '-' }}</td>
+                            <td>
+                                {% if employee.phone %}
+                                <a href="tel:{{ employee.phone }}" class="text-decoration-none">
+                                    <i class="fas fa-phone-alt text-success small"></i> {{ employee.phone }}
+                                </a>
+                                {% else %}
+                                -
+                                {% endif %}
+                              </td>
+                            <td>
+                                {% if employee.email %}
+                                <a href="mailto:{{ employee.email }}" class="text-decoration-none">
+                                    <i class="fas fa-envelope text-info small"></i> {{ employee.email|truncate(20) }}
+                                </a>
+                                {% else %}
+                                -
+                                {% endif %}
+                              </td>
+                            <td>
+                                {% if employee.salary > 0 %}
+                                {{ "{:,.2f}".format(employee.salary) }} ر.ي
+                                {% else %}
+                                -
+                                {% endif %}
+                              </td>
+                            <td>{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '-' }}</td>
+                            <td>
+                                {% if employee.is_active %}
+                                    <span class="status-badge bg-success">🟢 نشط</span>
+                                {% else %}
+                                    <span class="status-badge bg-secondary">⚫ غير نشط</span>
+                                {% endif %}
+                              </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('edit_employee', id=employee.id) }}" class="btn btn-outline-primary" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if employee.role != 'admin' %}
+                                    <a href="{{ url_for('delete_employee', id=employee.id) }}" class="btn btn-outline-danger"
+                                       onclick="return confirmDelete('{{ employee.full_name }}')" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                    <button class="btn btn-outline-info" onclick="showEmployeeDetails({{ employee.id }}, '{{ employee.full_name }}')" title="تفاصيل">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                              </td>
+                          </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="9" class="text-end"><strong>إجمالي الموظفين:</strong></td>
+                            <td><strong id="footerCount">{{ employees|length }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة تفاصيل الموظف -->
+<div class="modal fade" id="employeeDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-id-card"></i> تفاصيل الموظف</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="employeeDetailsContent">
+                جاري التحميل...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.19.2/package/dist/xlsx.full.min.js"></script>
+
+<script>
+    // تصفية الجدول
+    function filterTable() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const roleFilter = document.getElementById('roleFilter').value;
+
+        const rows = document.querySelectorAll('#employeesTableBody tr');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name')?.toLowerCase() || '';
+            const email = row.getAttribute('data-email')?.toLowerCase() || '';
+            const phone = row.getAttribute('data-phone')?.toLowerCase() || '';
+            const role = row.getAttribute('data-role');
+
+            let searchMatch = searchTerm === '' || name.includes(searchTerm) ||
+                             email.includes(searchTerm) || phone.includes(searchTerm);
+            let roleMatch = roleFilter === 'all' || role === roleFilter;
+
+            if (searchMatch && roleMatch) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('filteredCount').innerText = visibleCount;
+        document.getElementById('totalEmployees').innerText = visibleCount;
+        document.getElementById('footerCount').innerText = visibleCount;
+    }
+
+    // إعادة تعيين الفلاتر
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('roleFilter').value = 'all';
+        filterTable();
+    }
+
+    // عرض تفاصيل الموظف
+    function showEmployeeDetails(employeeId, employeeName) {
+        const modalContent = document.getElementById('employeeDetailsContent');
+        modalContent.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        new bootstrap.Modal(document.getElementById('employeeDetailsModal')).show();
+
+        fetch(`/api/employee/${employeeId}/details`)
+            .then(response => response.json())
+            .then(data => {
+                modalContent.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-user"></i> الاسم الكامل:</strong> ${data.full_name}</p>
+                            <p><strong><i class="fas fa-briefcase"></i> المسمى الوظيفي:</strong> ${data.position}</p>
+                            <p><strong><i class="fas fa-phone"></i> رقم الهاتف:</strong> ${data.phone || '-'}</p>
+                            <p><strong><i class="fas fa-envelope"></i> البريد الإلكتروني:</strong> ${data.email || '-'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong><i class="fas fa-map-marker-alt"></i> العنوان:</strong> ${data.address || '-'}</p>
+                            <p><strong><i class="fas fa-money-bill"></i> الراتب:</strong> ${data.salary.toFixed(2)} ر.ي</p>
+                            <p><strong><i class="fas fa-calendar-alt"></i> تاريخ التعيين:</strong> ${data.hire_date || '-'}</p>
+                            <p><strong><i class="fas fa-circle"></i> الحالة:</strong> ${data.is_active ? '<span class="badge bg-success">نشط</span>' : '<span class="badge bg-secondary">غير نشط</span>'}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h6><i class="fas fa-user-circle"></i> معلومات حساب المستخدم</h6>
+                            ${data.user ? `
+                                <p><strong>اسم المستخدم:</strong> ${data.user.username}</p>
+                                <p><strong>الدور في النظام:</strong> ${data.user.role}</p>
+                                <p><strong>حالة الحساب:</strong> ${data.user.is_active ? '<span class="badge bg-success">نشط</span>' : '<span class="badge bg-secondary">غير نشط</span>'}</p>
+                            ` : '<p class="text-muted">لا يوجد حساب مستخدم مرتبط</p>'}
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                modalContent.innerHTML = '<div class="alert alert-danger">حدث خطأ في تحميل البيانات</div>';
+            });
+    }
+
+    // تأكيد الحذف
+    function confirmDelete(employeeName) {
+        return confirm(`هل أنت متأكد من حذف الموظف "${employeeName}"؟\nلا يمكن التراجع عن هذا الإجراء.`);
+    }
+
+    // تصدير إلى Excel
+    function exportToExcel() {
+        const table = document.getElementById('employeesTable');
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.table_to_sheet(table);
+        XLSX.utils.book_append_sheet(wb, ws, 'الموظفين');
+        XLSX.writeFile(wb, `تقرير_الموظفين_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // تصدير إلى PDF
+    function exportToPDF() {
+        const element = document.querySelector('.card:last-child');
+        const opt = {
+            margin: [10, 10, 10, 10],
+            filename: `تقرير_الموظفين_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+
+    // طباعة التقرير
+    function printReport() {
+        window.print();
+    }
+
+    // تفعيل DataTables
+    $(document).ready(function() {
+        $('#employeesTable').DataTable({
+            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json' },
+            pageLength: 25,
+            searching: false,
+            paging: true
+        });
+    });
+
+    // ربط أحداث الفلاتر
+    document.getElementById('searchInput').addEventListener('keyup', filterTable);
+    document.getElementById('roleFilter').addEventListener('change', filterTable);
+</script>
+
+<style media="print">
+    .action-buttons, .filter-section, .btn, .modal, .no-print, .card-header .btn, .dataTables_filter, .dataTables_length, .dataTables_paginate {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    body {
+        padding: 20px !important;
+        background: white !important;
+    }
+    .table {
+        font-size: 10px !important;
+    }
+}
+</style>
+{% endblock %}

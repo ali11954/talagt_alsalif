@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}لوحة التحكم{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h2 class="mb-4"><i class="fas fa-tachometer-alt"></i> لوحة التحكم</h2>
+
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stat-card">
+                <i class="fas fa-boxes"></i>
+                <h3>{{ total_products }}</h3>
+                <p>إجمالي المنتجات</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card">
+                <i class="fas fa-exclamation-triangle text-warning"></i>
+                <h3>{{ low_stock }}</h3>
+                <p>منتجات منخفضة المخزون</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card">
+                <i class="fas fa-truck"></i>
+                <h3>{{ total_suppliers }}</h3>
+                <p>الموردين</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <h3>{{ total_customers }}</h3>
+                <p>العملاء</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-shopping-cart"></i> آخر المشتريات
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>المورد</th>
+                                    <th>المبلغ</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for purchase in recent_purchases %}
+                                <tr>
+                                    <td>{{ purchase.order_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ purchase.supplier.name }}</td>
+                                    <td>{{ "{:,.2f}".format(purchase.total_amount) }} د.ع</td>
+                                    <td>
+                                        {% if purchase.status == 'completed' %}
+                                            <span class="badge bg-success">مكتملة</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">معلقة</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-line"></i> آخر المبيعات
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>العميل</th>
+                                    <th>المبلغ</th>
+                                    <th>نوع الدفع</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sale in recent_sales %}
+                                <tr>
+                                    <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ sale.customer.name }}</td>
+                                    <td>{{ "{:,.2f}".format(sale.total_amount) }} د.ع</td>
+                                    <td>
+                                        {% if sale.payment_type == 'cash' %}
+                                            <span class="badge bg-success">نقدي</span>
+                                        {% else %}
+                                            <span class="badge bg-info">آجل</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar"></i> إحصائيات اليوم
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="text-primary">{{ "{:,.2f}".format(today_sales) }} د.ع</h2>
+                    <p>إجمالي مبيعات اليوم</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
