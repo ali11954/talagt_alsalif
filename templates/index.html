@@ -1,62 +1,243 @@
 {% extends "base.html" %}
 
-{% block title %}الرئيسية{% endblock %}
+{% block title %}الرئيسية - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+        border-radius: 20px;
+        padding: 40px;
+        color: white;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: transform 0.3s;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-card i {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    .stat-card h3 {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    .feature-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        height: 100%;
+        transition: all 0.3s;
+    }
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    .feature-card i {
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, #0288D1 0%, #00ACC1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
-    <div class="col-md-8 text-center">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-snowflake fa-3x"></i>
-                <h3 class="mt-2 mb-0">مرحباً بكم في ثلاجة الصليف</h3>
-            </div>
-            <div class="card-body">
-                <p class="lead">نظام متكامل لإدارة الموردين والمخزون والمبيعات والتحصيل</p>
-                <p>نظام متخصص لإدارة مشروبات المياه والغازية من التوريد إلى التوزيع</p>
+<div class="fade-in">
+    <!-- القسم الترحيبي -->
+    <div class="hero-section text-center">
+        <i class="fas fa-snowflake fa-4x mb-3"></i>
+        <h1 class="display-5 fw-bold mb-3">مرحباً بكم في ثلاجة الصليف</h1>
+        <p class="lead mb-0">نظام متكامل لإدارة الموردين والمخزون والمبيعات والتحصيل</p>
+        <p>نظام متخصص لإدارة مشروبات المياه والغازية من التوريد إلى التوزيع</p>
 
-                {% if not current_user.is_authenticated %}
-                <div class="mt-4">
-                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
-                    </a>
-                </div>
-                {% else %}
-                <div class="mt-4">
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-tachometer-alt"></i> الذهاب إلى لوحة التحكم
-                    </a>
-                </div>
-                {% endif %}
+        {% if not current_user.is_authenticated %}
+        <div class="mt-4">
+            <a href="{{ url_for('login') }}" class="btn btn-light btn-lg px-4">
+                <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+            </a>
+        </div>
+        {% else %}
+        <div class="mt-4">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-lg px-4">
+                <i class="fas fa-tachometer-alt"></i> الذهاب إلى لوحة التحكم
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- إحصائيات سريعة من قاعدة البيانات -->
+    <div class="row mb-5">
+        <div class="col-md-3 col-6 mb-3">
+            <div class="stat-card">
+                <i class="fas fa-truck text-primary"></i>
+                <h3 class="text-primary">{{ total_suppliers|default(0) }}</h3>
+                <p class="text-muted mb-0">مورد معتمد</p>
+                <small class="text-success">
+                    <i class="fas fa-check-circle"></i> نشط
+                </small>
             </div>
         </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="stat-card">
+                <i class="fas fa-boxes text-info"></i>
+                <h3 class="text-info">{{ total_products|default(0) }}</h3>
+                <p class="text-muted mb-0">منتج متنوع</p>
+                <small>
+                    <i class="fas fa-snowflake"></i> {{ frozen_products|default(0) }} مجمد
+                </small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="stat-card">
+                <i class="fas fa-users text-success"></i>
+                <h3 class="text-success">{{ total_customers|default(0) }}</h3>
+                <p class="text-muted mb-0">عميل نشط</p>
+                <small class="text-warning">
+                    <i class="fas fa-hand-holding-usd"></i> {{ debt_customers|default(0) }} مدينين
+                </small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="stat-card">
+                <i class="fas fa-chart-line text-warning"></i>
+                <h3 class="text-warning">{{ total_sales_count|default(0) }}</h3>
+                <p class="text-muted mb-0">عملية بيع</p>
+                <small class="text-info">
+                    <i class="fas fa-calendar"></i> {{ monthly_sales_count|default(0) }} هذا الشهر
+                </small>
+            </div>
+        </div>
+    </div>
 
-        <div class="row mt-4">
-            <div class="col-md-3 col-6">
-                <div class="stat-card">
-                    <i class="fas fa-truck"></i>
-                    <h3>+50</h3>
-                    <p>مورد معتمد</p>
+    <!-- الميزات والخدمات -->
+    <div class="row mb-5">
+        <div class="col-12 mb-3">
+            <h4 class="text-center mb-4"><i class="fas fa-star text-warning"></i> ماذا نقدم؟</h4>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="feature-card">
+                <i class="fas fa-truck"></i>
+                <h5>إدارة الموردين</h5>
+                <p class="text-muted small">تسجيل وإدارة جميع الموردين<br>وتتبع المشتريات والمديونيات</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="feature-card">
+                <i class="fas fa-boxes"></i>
+                <h5>إدارة المخزون</h5>
+                <p class="text-muted small">متابعة المخزون والمنتجات<br>ونظام أمانات التجميد</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="feature-card">
+                <i class="fas fa-chart-line"></i>
+                <h5>إدارة المبيعات</h5>
+                <p class="text-muted small">تسجيل المبيعات نقداً أو آجلاً<br>وتتبع المديونيات</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="feature-card">
+                <i class="fas fa-hand-holding-usd"></i>
+                <h5>نظام التحصيل</h5>
+                <p class="text-muted small">إدارة عمليات التحصيل اليومي<br>ومتابعة المديونيات</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="feature-card">
+                <i class="fas fa-cash-register"></i>
+                <h5>إدارة الصندوق</h5>
+                <p class="text-muted small">متابعة حركة الصندوق<br>وقيد اليومية والموافقات المالية</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="feature-card">
+                <i class="fas fa-file-alt"></i>
+                <h5>تقارير متكاملة</h5>
+                <p class="text-muted small">تقارير المبيعات والمخزون والمديونيات<br>مع إمكانية التصدير</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- آخر النشاطات -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <i class="fas fa-shopping-cart text-primary"></i>
+                    آخر المشتريات
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>المورد</th>
+                                    <th>المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for purchase in recent_purchases|default([]) %}
+                                <tr>
+                                    <td>{{ purchase.order_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ purchase.supplier.name }}</td>
+                                    <td>{{ "{:,.2f}".format(purchase.total_amount) }} د.ع</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">لا توجد مشتريات حديثة</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-card">
-                    <i class="fas fa-boxes"></i>
-                    <h3>+100</h3>
-                    <p>منتج متنوع</p>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <i class="fas fa-chart-line text-success"></i>
+                    آخر المبيعات
                 </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-card">
-                    <i class="fas fa-users"></i>
-                    <h3>+200</h3>
-                    <p>عميل نشط</p>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="stat-card">
-                    <i class="fas fa-chart-line"></i>
-                    <h3>+5000</h3>
-                    <p>عملية بيع</p>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>العميل</th>
+                                    <th>المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sale in recent_sales|default([]) %}
+                                <tr>
+                                    <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ sale.customer.name }}</td>
+                                    <td>{{ "{:,.2f}".format(sale.total_amount) }} د.ع</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">لا توجد مبيعات حديثة</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

@@ -36,21 +36,12 @@ login_manager.login_view = 'login'
 
 from datetime import datetime
 
-
 @app.context_processor
 def utility_processor():
     """جعل الدوال والمتغيرات متاحة في جميع القوالب"""
 
     def now(format='%Y-%m-%d %H:%M:%S'):
         return datetime.now().strftime(format)
-
-    return {
-        'datetime': datetime,
-        'now': now,
-        'current_date': datetime.now().strftime('%Y-%m-%d'),
-        'current_time': datetime.now().strftime('%H:%M:%S'),
-        'current_year': datetime.now().year
-    }
 
     def format_number(value):
         """تنسيق الأرقام"""
@@ -71,11 +62,10 @@ def utility_processor():
         'now': now,
         'current_date': datetime.now().strftime('%Y-%m-%d'),
         'current_time': datetime.now().strftime('%H:%M:%S'),
+        'current_year': datetime.now().year,
         'format_number': format_number,
         'format_currency': format_currency
     }
-
-
 
 def permission_required(permission):
     """ديكوراتور للتحقق من الصلاحيات"""
@@ -99,11 +89,41 @@ def load_user(user_id):
 
 
 # ==================== الصفحات الرئيسية ====================
-
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # إحصائيات عامة
+    total_suppliers = Supplier.query.count()
+    total_products = Product.query.count()
+    total_customers = Customer.query.count()
+    frozen_products = Product.query.filter_by(is_frozen=True).count()
+    debt_customers = Customer.query.filter(Customer.balance > 0).count()
+    total_sales_count = SaleOrder.query.count()
 
+    # مبيعات هذا الشهر
+    first_day_of_month = datetime.now().replace(day=1)
+    monthly_sales_count = SaleOrder.query.filter(
+        SaleOrder.sale_date >= first_day_of_month
+    ).count()
+
+    # آخر 5 مشتريات ومبيعات
+    recent_purchases = PurchaseOrder.query.order_by(
+        PurchaseOrder.order_date.desc()
+    ).limit(5).all()
+
+    recent_sales = SaleOrder.query.order_by(
+        SaleOrder.sale_date.desc()
+    ).limit(5).all()
+
+    return render_template('index.html',
+                           total_suppliers=total_suppliers,
+                           total_products=total_products,
+                           total_customers=total_customers,
+                           frozen_products=frozen_products,
+                           debt_customers=debt_customers,
+                           total_sales_count=total_sales_count,
+                           monthly_sales_count=monthly_sales_count,
+                           recent_purchases=recent_purchases,
+                           recent_sales=recent_sales)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1513,7 +1533,6 @@ def debts_report():
                            total_debts=total_debts)
 
 # ==================== تشغيل التطبيق ====================
-
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
@@ -1547,4 +1566,8 @@ if __name__ == '__main__':
             print("كلمة المرور: admin123")
             print("=" * 50)
 
-    app.run(debug=True)
+    # للتشغيل المحلي
+    # app.run(debug=True)
+
+    # للنشر على Render
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
