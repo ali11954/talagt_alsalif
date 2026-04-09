@@ -5,17 +5,34 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import json
+import os
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from models import db, User, UserRole, Permission, ROLE_PERMISSIONS, Employee, Supplier, Product, PurchaseOrder, PurchaseItem, Customer, SaleOrder, SaleItem, Collection, CashTransaction, FreezeDeposit, Transaction, CashBox, JournalEntry, JournalDetail, DailyCashSummary
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+import json
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-this'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///thaljat_alsaleef.db'
+
+# إعدادات التطبيق الأساسية
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-this')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# إعداد قاعدة البيانات (دعم SQLite محلياً و PostgreSQL على Render)
+database_url = os.environ.get('DATABASE_URL', 'sqlite:///thaljat_alsaleef.db')
+if database_url and database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+
+# تهيئة قاعدة البيانات
 db.init_app(app)
+
+# تهيئة نظام تسجيل الدخول
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-
 
 def permission_required(permission):
     """ديكوراتور للتحقق من الصلاحيات"""
