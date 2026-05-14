@@ -33,10 +33,10 @@
                             <td>{{ sale.id }}</td>
                             <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
                             <td>{{ sale.customer.name }}</td>
-                            <td>{{ "{:,.2f}".format(sale.total_amount) }} د.ع</td>
-                            <td>{{ "{:,.2f}".format(sale.paid_amount) }} د.ع</td>
+                            <td>{{ "{:,.2f}".format(sale.total_amount) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(sale.paid_amount) }} ر.ي</td>
                             <td class="{% if (sale.total_amount - sale.paid_amount) > 0 %}text-danger{% else %}text-success{% endif %}">
-                                {{ "{:,.2f}".format(sale.total_amount - sale.paid_amount) }} د.ع
+                                {{ "{:,.2f}".format(sale.total_amount - sale.paid_amount) }} ر.ي
                             </td>
                             <td>
                                 {% if sale.payment_type == 'cash' %}

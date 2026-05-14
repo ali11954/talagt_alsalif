@@ -13,6 +13,9 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import json
+from werkzeug.security import generate_password_hash, check_password_hash
+import bcrypt  # إضافة هذا الاستيراد
+
 
 app = Flask(__name__)
 

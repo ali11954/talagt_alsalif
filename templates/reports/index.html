@@ -382,9 +382,9 @@ function updateSalesTable(data) {
         <tr>
             <td>${sale.date}</td>
             <td>${sale.customer}</td>
-            <td>${formatNumber(sale.total)} د.ع</td>
-            <td>${formatNumber(sale.paid)} د.ع</td>
-            <td class="text-danger">${formatNumber(sale.remaining)} د.ع</td>
+            <td>${formatNumber(sale.total)} ر.ي</td>
+            <td>${formatNumber(sale.paid)} ر.ي</td>
+            <td class="text-danger">${formatNumber(sale.remaining)} ر.ي</td>
             <td><span class="badge ${sale.type === 'cash' ? 'bg-success' : 'bg-warning'}">${sale.type === 'cash' ? 'نقدي' : 'آجل'}</span></td>
         </tr>
     `).join('');
@@ -401,9 +401,9 @@ function updatePurchasesTable(data) {
         <tr>
             <td>${purchase.date}</td>
             <td>${purchase.supplier}</td>
-            <td>${formatNumber(purchase.total)} د.ع</td>
-            <td>${formatNumber(purchase.paid)} د.ع</td>
-            <td class="text-danger">${formatNumber(purchase.remaining)} د.ع</td>
+            <td>${formatNumber(purchase.total)} ر.ي</td>
+            <td>${formatNumber(purchase.paid)} ر.ي</td>
+            <td class="text-danger">${formatNumber(purchase.remaining)} ر.ي</td>
             <td><span class="badge ${purchase.type === 'cash' ? 'bg-success' : 'bg-warning'}">${purchase.type === 'cash' ? 'نقدي' : 'آجل'}</span></td>
         </tr>
     `).join('');
@@ -419,8 +419,8 @@ function updateDebtsTable(data) {
     tbody.innerHTML = data.map(debt => `
         <tr>
             <td>${debt.customer}</td>
-            <td class="text-danger">${formatNumber(debt.balance)} د.ع</td>
-            <td>${formatNumber(debt.limit)} د.ع</td>
+            <td class="text-danger">${formatNumber(debt.balance)} ر.ي</td>
+            <td>${formatNumber(debt.limit)} ر.ي</td>
             <td>${debt.last_collection || '-'}</td>
             <td>
                 <div class="progress" style="height: 20px;">
@@ -444,7 +444,7 @@ function updateCashTable(data) {
         <tr>
             <td>${trans.date}</td>
             <td><span class="badge ${trans.type === 'income' ? 'bg-success' : 'bg-danger'}">${trans.type === 'income' ? 'إيراد' : 'مصروف'}</span></td>
-            <td class="${trans.type === 'income' ? 'text-success' : 'text-danger'}">${trans.type === 'income' ? '+' : '-'} ${formatNumber(trans.amount)} د.ع</td>
+            <td class="${trans.type === 'income' ? 'text-success' : 'text-danger'}">${trans.type === 'income' ? '+' : '-'} ${formatNumber(trans.amount)} ر.ي</td>
             <td>${trans.description}</td>
             <td>${trans.user}</td>
         </tr>
@@ -462,9 +462,9 @@ function updateInventoryTable(data) {
         <tr>
             <td>${product.name}</td>
             <td>${product.quantity} ${product.unit}</td>
-            <td>${formatNumber(product.purchase_price)} د.ع</td>
-            <td>${formatNumber(product.selling_price)} د.ع</td>
-            <td>${formatNumber(product.value)} د.ع</td>
+            <td>${formatNumber(product.purchase_price)} ر.ي</td>
+            <td>${formatNumber(product.selling_price)} ر.ي</td>
+            <td>${formatNumber(product.value)} ر.ي</td>
             <td>${product.quantity < product.min_quantity ? '<span class="badge bg-danger">مخزون منخفض</span>' : '<span class="badge bg-success">جيد</span>'}</td>
         </tr>
     `).join('');
@@ -482,7 +482,7 @@ function updateFreezeTable(data) {
             <td>${deposit.date}</td>
             <td>${deposit.product}</td>
             <td>${deposit.quantity}</td>
-            <td>${formatNumber(deposit.amount)} د.ع</td>
+            <td>${formatNumber(deposit.amount)} ر.ي</td>
             <td><span class="badge ${deposit.is_returned ? 'bg-success' : 'bg-warning'}">${deposit.is_returned ? 'تم الإرجاع' : 'قيد التجميد'}</span></td>
             <td>${deposit.customer || '-'}</td>
         </tr>

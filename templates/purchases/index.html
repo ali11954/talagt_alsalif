@@ -32,8 +32,8 @@
                             <td>{{ purchase.id }}</td>
                             <td>{{ purchase.order_date.strftime('%Y-%m-%d') }}</td>
                             <td>{{ purchase.supplier.name }}</td>
-                            <td>{{ "{:,.2f}".format(purchase.total_amount) }} د.ع</td>
-                            <td>{{ "{:,.2f}".format(purchase.paid_amount) }} د.ع</td>
+                            <td>{{ "{:,.2f}".format(purchase.total_amount) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(purchase.paid_amount) }} ر.ي</td>
                             <td>
                                 {% if purchase.payment_type == 'cash' %}
                                     <span class="badge bg-success">نقدي</span>

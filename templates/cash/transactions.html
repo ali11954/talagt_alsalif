@@ -40,9 +40,9 @@
                         </td>
                         <td>
                             {% if trans.type in ['income', 'deposit'] %}
-                                <span class="text-success">+ {{ "{:,.2f}".format(trans.amount) }} د.ع</span>
+                                <span class="text-success">+ {{ "{:,.2f}".format(trans.amount) }} ر.ي</span>
                             {% else %}
-                                <span class="text-danger">- {{ "{:,.2f}".format(trans.amount) }} د.ع</span>
+                                <span class="text-danger">- {{ "{:,.2f}".format(trans.amount) }} ر.ي</span>
                             {% endif %}
                         </td>
                         <td>{{ trans.description }}</td>

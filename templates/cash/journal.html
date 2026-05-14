@@ -30,8 +30,8 @@
                         <td>{{ entry.entry_date.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>{{ entry.reference_number }}</td>
                         <td>{{ entry.description }}</td>
-                        <td class="text-danger">{{ "{:,.2f}".format(entry.total_debit) }} د.ع</td>
-                        <td class="text-success">{{ "{:,.2f}".format(entry.total_credit) }} د.ع</td>
+                        <td class="text-danger">{{ "{:,.2f}".format(entry.total_debit) }} ر.ي</td>
+                        <td class="text-success">{{ "{:,.2f}".format(entry.total_credit) }} ر.ي</td>
                         <td>
                             <a href="{{ url_for('delete_journal_entry', id=entry.id) }}"
                                class="btn btn-sm btn-danger"
