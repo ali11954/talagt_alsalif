@@ -346,10 +346,20 @@
                         </a>
                     </li>
                     <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('products_list') }}">
+        <i class="fas fa-boxes"></i> المنتجات
+    </a>
+</li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'purchases' %}active{% endif %}" href="{{ url_for('purchases') }}">
                             <i class="fas fa-shopping-cart"></i> المشتريات
                         </a>
                     </li>
+                    <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('supplier_payments') }}">
+        <i class="fas fa-hand-holding-usd"></i> <span>سداد الموردين</span>
+    </a>
+</li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}" href="{{ url_for('inventory') }}">
                             <i class="fas fa-boxes"></i> المخزون

@@ -8,7 +8,7 @@ import json
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from models import db, User, UserRole, Permission, ROLE_PERMISSIONS, Employee, Supplier, Product, PurchaseOrder, PurchaseItem, Customer, SaleOrder, SaleItem, Collection, CashTransaction, FreezeDeposit, Transaction, CashBox, JournalEntry, JournalDetail, DailyCashSummary
+from models import db, User, UserRole, Permission,SupplierPayment, ROLE_PERMISSIONS, Employee, Supplier, Product, PurchaseOrder, PurchaseItem, Customer, SaleOrder, SaleItem, Collection, CashTransaction, FreezeDeposit, Transaction, CashBox, JournalEntry, JournalDetail, DailyCashSummary
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -526,6 +526,136 @@ def edit_customer(id):
 
 
 # ==================== إدارة المخزون (عرض فقط) ====================
+# ==================== إدارة المنتجات ====================
+
+@app.route('/products')
+@login_required
+@permission_required(Permission.VIEW_INVENTORY)
+def products_list():
+    """عرض قائمة المنتجات"""
+    products = Product.query.order_by(Product.name).all()
+
+    # إحصائيات
+    total_products = len(products)
+    total_quantity = sum(p.quantity for p in products)
+    total_value = sum(p.quantity * p.purchase_price for p in products)
+    low_stock_count = sum(1 for p in products if p.quantity < p.min_quantity)
+    frozen_count = sum(1 for p in products if p.is_frozen)
+
+    return render_template('products/index.html',
+                           products=products,
+                           total_products=total_products,
+                           total_quantity=total_quantity,
+                           total_value=total_value,
+                           low_stock_count=low_stock_count,
+                           frozen_count=frozen_count)
+
+
+@app.route('/products/add', methods=['GET', 'POST'])
+@login_required
+@permission_required(Permission.EDIT_PRODUCT)
+def add_product():
+    """إضافة منتج جديد"""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        category = request.form.get('category')
+        unit = request.form.get('unit')
+        purchase_price = float(request.form.get('purchase_price', 0))
+        selling_price = float(request.form.get('selling_price', 0))
+        quantity = int(request.form.get('quantity', 0))
+        min_quantity = int(request.form.get('min_quantity', 10))
+        location = request.form.get('location')
+        is_frozen = request.form.get('is_frozen') == 'on'
+        freeze_deposit = float(request.form.get('freeze_deposit', 0))
+
+        # التحقق من عدم وجود منتج بنفس الاسم
+        existing = Product.query.filter_by(name=name).first()
+        if existing:
+            flash('منتج بنفس الاسم موجود بالفعل', 'danger')
+            return redirect(url_for('add_product'))
+
+        product = Product(
+            name=name,
+            category=category,
+            unit=unit,
+            purchase_price=purchase_price,
+            selling_price=selling_price,
+            quantity=quantity,
+            min_quantity=min_quantity,
+            location=location,
+            is_frozen=is_frozen,
+            freeze_deposit=freeze_deposit
+        )
+        db.session.add(product)
+        db.session.commit()
+
+        flash(f'تم إضافة المنتج {name} بنجاح', 'success')
+        return redirect(url_for('products_list'))
+
+    categories = ['مياه', 'مشروبات غازية', 'مشروبات طاقة', 'أجبان', 'ألبان', 'زيوت', 'مواد غذائية', 'مجمدة']
+    return render_template('products/add.html', categories=categories)
+
+
+@app.route('/products/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+@permission_required(Permission.EDIT_PRODUCT)
+def edit_product_standalone(id):
+    """تعديل منتج"""
+    product = Product.query.get_or_404(id)
+
+    if request.method == 'POST':
+        product.name = request.form.get('name')
+        product.category = request.form.get('category')
+        product.unit = request.form.get('unit')
+        product.purchase_price = float(request.form.get('purchase_price', 0))
+        product.selling_price = float(request.form.get('selling_price', 0))
+        product.min_quantity = int(request.form.get('min_quantity', 10))
+        product.location = request.form.get('location')
+        product.is_frozen = request.form.get('is_frozen') == 'on'
+        product.freeze_deposit = float(request.form.get('freeze_deposit', 0))
+
+        db.session.commit()
+        flash('تم تحديث بيانات المنتج بنجاح', 'success')
+        return redirect(url_for('products_list'))
+
+    categories = ['مياه', 'مشروبات غازية', 'مشروبات طاقة', 'أجبان', 'ألبان', 'زيوت', 'مواد غذائية', 'مجمدة']
+    return render_template('products/edit.html', product=product, categories=categories)
+
+
+@app.route('/products/delete/<int:id>')
+@login_required
+@permission_required(Permission.EDIT_PRODUCT)
+def delete_product(id):
+    """حذف منتج"""
+    product = Product.query.get_or_404(id)
+
+    # التحقق من وجود مشتريات مرتبطة
+    purchases = PurchaseItem.query.filter_by(product_id=id).count()
+    if purchases > 0:
+        flash('لا يمكن حذف منتج له مشتريات مرتبطة', 'danger')
+        return redirect(url_for('products_list'))
+
+    db.session.delete(product)
+    db.session.commit()
+    flash('تم حذف المنتج بنجاح', 'success')
+    return redirect(url_for('products_list'))
+
+
+@app.route('/api/products/search_json')
+@login_required
+def search_products_json():
+    """API للبحث عن المنتجات (للاستخدام في المشتريات)"""
+    query = request.args.get('q', '')
+    products = Product.query.filter(Product.name.contains(query)).limit(20).all()
+    return jsonify([{
+        'id': p.id,
+        'name': p.name,
+        'category': p.category,
+        'purchase_price': p.purchase_price,
+        'selling_price': p.selling_price,
+        'quantity': p.quantity,
+        'unit': p.unit
+    } for p in products])
 
 @app.route('/inventory')
 @login_required
@@ -556,7 +686,6 @@ def edit_product(id):
 
 
 # ==================== إدارة المشتريات ====================
-
 @app.route('/purchases')
 @login_required
 @permission_required(Permission.VIEW_PURCHASES)
@@ -578,43 +707,435 @@ def add_purchase():
         total_amount = float(request.form.get('total_amount'))
         paid_amount = float(request.form.get('paid_amount', 0))
 
-        purchase = PurchaseOrder(
-            supplier_id=supplier_id,
-            total_amount=total_amount,
-            paid_amount=paid_amount,
-            payment_type=payment_type,
-            status='pending',
-            cash_status='pending',  # ✅ تنتظر الموافقة المالية
-            created_by=current_user.id
-        )
-        db.session.add(purchase)
+        # ✅ المنطق المحاسبي الصحيح
+        if payment_type == 'cash':
+            # حالة 1: شراء نقدي - يحتاج موافقة الصندوق
+            purchase = PurchaseOrder(
+                supplier_id=supplier_id,
+                total_amount=total_amount,
+                paid_amount=0,  # لم يدفع بعد (سينتظر الموافقة)
+                remaining_amount=total_amount,
+                payment_type=payment_type,
+                status='pending',
+                cash_status='pending',  # تنتظر الموافقة المالية
+                cash_amount=total_amount,  # المبلغ النقدي الذي سيخرج
+                created_by=current_user.id
+            )
+            db.session.add(purchase)
+            db.session.flush()
+
+            # إضافة الأصناف (بدون تحديث المخزون)
+            items_data = json.loads(request.form.get('items_data', '[]'))
+            for item in items_data:
+                purchase_item = PurchaseItem(
+                    purchase_order_id=purchase.id,
+                    product_id=item['product_id'],
+                    quantity=item['quantity'],
+                    unit_price=item['unit_price'],
+                    total_price=item['quantity'] * item['unit_price']
+                )
+                db.session.add(purchase_item)
+
+            db.session.commit()
+            flash(f'تم تسجيل عملية الشراء النقدية بمبلغ {total_amount:,.2f} ريال وتنتظر موافقة الصندوق', 'info')
+
+        else:  # credit - شراء آجل
+            if paid_amount > 0 and paid_amount < total_amount:
+                # حالة 2: شراء آجل مع دفع جزئي - يحتاج موافقة على الجزء المدفوع
+                purchase = PurchaseOrder(
+                    supplier_id=supplier_id,
+                    total_amount=total_amount,
+                    paid_amount=0,  # لم يدفع بعد (سينتظر الموافقة على الجزء المدفوع)
+                    remaining_amount=total_amount,
+                    payment_type=payment_type,
+                    status='pending',
+                    cash_status='pending',  # تنتظر الموافقة على الدفعة المقدمة
+                    cash_amount=paid_amount,  # المبلغ المطلوب دفعه مقدماً
+                    created_by=current_user.id
+                )
+                db.session.add(purchase)
+                db.session.flush()
+
+                # إضافة الأصناف (بدون تحديث المخزون)
+                items_data = json.loads(request.form.get('items_data', '[]'))
+                for item in items_data:
+                    purchase_item = PurchaseItem(
+                        purchase_order_id=purchase.id,
+                        product_id=item['product_id'],
+                        quantity=item['quantity'],
+                        unit_price=item['unit_price'],
+                        total_price=item['quantity'] * item['unit_price']
+                    )
+                    db.session.add(purchase_item)
+
+                db.session.commit()
+                flash(f'تم تسجيل عملية الشراء الآجلة مع دفعة مقدمة {paid_amount:,.2f} ريال وتنتظر موافقة الصندوق',
+                      'info')
+
+            else:
+                # شراء آجل بدون دفع - لا يحتاج موافقة
+                purchase = PurchaseOrder(
+                    supplier_id=supplier_id,
+                    total_amount=total_amount,
+                    paid_amount=paid_amount,
+                    remaining_amount=total_amount - paid_amount,
+                    payment_type=payment_type,
+                    status='completed',
+                    cash_status='approved',  # موافقة تلقائية
+                    cash_approved_by=current_user.id,
+                    cash_approved_at=datetime.now(),
+                    created_by=current_user.id
+                )
+                db.session.add(purchase)
+                db.session.flush()
+
+                # إضافة الأصناف وتحديث المخزون فوراً
+                items_data = json.loads(request.form.get('items_data', '[]'))
+                for item in items_data:
+                    purchase_item = PurchaseItem(
+                        purchase_order_id=purchase.id,
+                        product_id=item['product_id'],
+                        quantity=item['quantity'],
+                        unit_price=item['unit_price'],
+                        total_price=item['quantity'] * item['unit_price']
+                    )
+                    db.session.add(purchase_item)
+
+                    # تحديث المخزون فوراً
+                    product = Product.query.get(item['product_id'])
+                    if product:
+                        product.quantity += item['quantity']
+                        product.purchase_price = item['unit_price']
+
+                # تحديث رصيد المورد (زيادة المديونية)
+                supplier = Supplier.query.get(supplier_id)
+                if supplier:
+                    supplier.balance += (total_amount - paid_amount)
+
+                db.session.commit()
+                flash('تم تسجيل عملية الشراء الآجلة وتحديث المخزون بنجاح', 'success')
+
+        return redirect(url_for('purchases'))
+
+    return render_template('purchases/add.html', suppliers=suppliers, products=existing_products)
+
+
+# ==================== تعديل وحذف المشتريات ====================
+
+@app.route('/purchases/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+@permission_required(Permission.ADD_PURCHASE)
+def edit_purchase(id):
+    purchase = PurchaseOrder.query.get_or_404(id)
+    suppliers = Supplier.query.all()
+    products = Product.query.all()
+
+    # التحقق: لا يمكن تعديل عملية مكتملة
+    if purchase.status == 'completed':
+        flash('لا يمكن تعديل عملية شراء مكتملة', 'danger')
+        return redirect(url_for('purchases'))
+
+    if purchase.cash_status == 'approved':
+        flash('لا يمكن تعديل عملية شراء تمت الموافقة عليها', 'danger')
+        return redirect(url_for('purchases'))
+
+    if request.method == 'POST':
+        supplier_id = request.form.get('supplier_id')
+        payment_type = request.form.get('payment_type')
+        total_amount = float(request.form.get('total_amount'))
+        paid_amount = float(request.form.get('paid_amount', 0))
+
+        # تحديث بيانات أمر الشراء
+        purchase.supplier_id = supplier_id
+        purchase.total_amount = total_amount
+        purchase.paid_amount = paid_amount
+        purchase.payment_type = payment_type
+
+        # حذف الأصناف القديمة
+        for item in purchase.items:
+            db.session.delete(item)
+
         db.session.flush()
 
-        # إضافة الأصناف
+        # إضافة الأصناف الجديدة
         items_data = json.loads(request.form.get('items_data', '[]'))
         for item in items_data:
             purchase_item = PurchaseItem(
                 purchase_order_id=purchase.id,
                 product_id=item['product_id'],
-                quantity=item['quantity'],
-                unit_price=item['unit_price'],
-                total_price=item['quantity'] * item['unit_price']
+                quantity=int(item['quantity']),
+                unit_price=float(item['unit_price']),
+                total_price=int(item['quantity']) * float(item['unit_price'])
             )
             db.session.add(purchase_item)
 
-            # ⚠️ لا يتم تحديث المخزون حتى موافقة الصندوق
-            # product = Product.query.get(item['product_id'])
-            # product.quantity += item['quantity']  # مؤجل
-
-        # ✅ لا يتم تسجيل أي معاملة مالية
+        # تحديث حالة العملية
+        if payment_type == 'cash':
+            purchase.status = 'pending'
+            purchase.cash_status = 'pending'
+        else:
+            purchase.status = 'completed'
+            purchase.cash_status = 'approved'
 
         db.session.commit()
-        flash('تم تسجيل عملية الشراء بنجاح وتنتظر موافقة الصندوق', 'info')
+        flash('تم تعديل عملية الشراء بنجاح', 'success')
         return redirect(url_for('purchases'))
 
-    return render_template('purchases/add.html', suppliers=suppliers, products=existing_products)
+    # عرض صفحة التعديل - مع التحقق من وجود المنتج
+    items_json = []
+    for item in purchase.items:
+        product_name = item.product.name if item.product else 'منتج غير موجود'
+        items_json.append({
+            'product_id': item.product_id,
+            'product_name': product_name,
+            'quantity': item.quantity,
+            'unit_price': item.unit_price,
+            'total_price': item.total_price
+        })
 
-# ==================== إدارة المبيعات ====================
+    items_json_str = json.dumps(items_json)
+
+    return render_template('purchases/edit.html',
+                           purchase=purchase,
+                           suppliers=suppliers,
+                           products=products,
+                           items_json=items_json_str)
+
+@app.route('/purchases/delete/<int:id>')
+@login_required
+@permission_required(Permission.ADD_PURCHASE)
+def delete_purchase(id):
+    purchase = PurchaseOrder.query.get_or_404(id)
+
+    # التحقق: لا يمكن حذف عملية مكتملة أو موافق عليها
+    if purchase.cash_status == 'approved':
+        flash('لا يمكن حذف عملية شراء تمت الموافقة عليها مسبقاً', 'danger')
+        return redirect(url_for('purchases'))
+
+    if purchase.status == 'completed':
+        flash('لا يمكن حذف عملية شراء مكتملة', 'danger')
+        return redirect(url_for('purchases'))
+
+    # حذف عناصر الشراء أولاً
+    for item in purchase.items:
+        db.session.delete(item)
+
+    # حذف أمر الشراء
+    db.session.delete(purchase)
+    db.session.commit()
+
+    flash('تم حذف عملية الشراء بنجاح', 'success')
+    return redirect(url_for('purchases'))
+
+
+@app.route('/purchases/cancel/<int:id>')
+@login_required
+@permission_required(Permission.ADD_PURCHASE)
+def cancel_purchase(id):
+    """إلغاء عملية شراء (بدلاً من حذفها)"""
+    purchase = PurchaseOrder.query.get_or_404(id)
+
+    # التحقق: لا يمكن إلغاء عملية مكتملة
+    if purchase.status == 'completed':
+        flash('لا يمكن إلغاء عملية شراء مكتملة', 'danger')
+        return redirect(url_for('purchases'))
+
+    # إذا كانت العملية قد تمت الموافقة عليها مسبقاً، نعيد المخزون
+    if purchase.cash_status == 'approved':
+        for item in purchase.items:
+            product = Product.query.get(item.product_id)
+            if product:
+                product.quantity -= item.quantity
+
+    # تحديث الحالة إلى ملغاة
+    purchase.status = 'cancelled'
+    purchase.cash_status = 'rejected'
+    purchase.cash_rejection_reason = 'تم الإلغاء بواسطة المستخدم'
+
+    db.session.commit()
+    flash('تم إلغاء عملية الشراء بنجاح', 'success')
+    return redirect(url_for('purchases'))
+
+
+@app.route('/purchases/approve/<int:id>', methods=['POST'])
+@login_required
+@permission_required(Permission.MANAGE_CASH)
+def approve_purchase_direct(id):
+    """موافقة مباشرة على عملية شراء (بدون الحاجة لصفحة الموافقات)"""
+    purchase = PurchaseOrder.query.get_or_404(id)
+
+    if purchase.cash_status == 'approved':
+        flash('تمت الموافقة على هذه العملية مسبقاً', 'warning')
+        return redirect(url_for('purchases'))
+
+    # الموافقة على العملية
+    purchase.cash_status = 'approved'
+    purchase.cash_approved_by = current_user.id
+    purchase.cash_approved_at = datetime.now()
+    purchase.status = 'completed'
+
+    # تحديث المخزون
+    for item in purchase.items:
+        product = Product.query.get(item.product_id)
+        if product:
+            product.quantity += item.quantity
+            product.purchase_price = item.unit_price
+
+    # تحديث رصيد المورد (إذا كان هناك مبلغ متبقي)
+    if purchase.total_amount > purchase.paid_amount:
+        supplier = Supplier.query.get(purchase.supplier_id)
+        if supplier:
+            supplier.balance += (purchase.total_amount - purchase.paid_amount)
+
+    # تسجيل حركة الصندوق (للمدفوع فقط)
+    if purchase.paid_amount > 0:
+        cash_transaction = CashTransaction(
+            type='expense',
+            amount=purchase.paid_amount,
+            description=f'شراء من مورد {purchase.supplier.name}',
+            reference_type='purchase',
+            reference_id=purchase.id,
+            user_id=current_user.id
+        )
+        db.session.add(cash_transaction)
+
+        cash_box = CashBox.query.first()
+        if cash_box:
+            cash_box.balance -= purchase.paid_amount
+            cash_box.updated_at = datetime.now()
+
+    db.session.commit()
+    flash(f'تمت الموافقة على عملية الشراء رقم {purchase.id}', 'success')
+    return redirect(url_for('purchases'))
+
+@app.route('/purchases/print/<int:id>')
+@login_required
+@permission_required(Permission.VIEW_PURCHASES)
+def print_purchase(id):
+    """طباعة تفاصيل عملية الشراء"""
+    purchase = PurchaseOrder.query.get_or_404(id)
+    return render_template('purchases/print.html', purchase=purchase)
+
+
+# ==================== إدارة سداد الموردين ====================
+
+@app.route('/suppliers/payments')
+@login_required
+@permission_required(Permission.MANAGE_SUPPLIERS)
+def supplier_payments():
+    """عرض سجل سداد الموردين"""
+    suppliers = Supplier.query.filter(Supplier.balance > 0).all()
+    payments = SupplierPayment.query.order_by(SupplierPayment.payment_date.desc()).all()
+
+    total_paid = sum(p.amount for p in payments if p.cash_status == 'approved')
+    pending_payments = SupplierPayment.query.filter_by(cash_status='pending').count()
+
+    return render_template('suppliers/payments.html',
+                           suppliers=suppliers,
+                           payments=payments,
+                           total_paid=total_paid,
+                           pending_payments=pending_payments)
+
+
+@app.route('/suppliers/payments/add', methods=['POST'])
+@login_required
+@permission_required(Permission.MANAGE_SUPPLIERS)
+def add_supplier_payment():
+    """تسجيل دفعة جديدة لمورد"""
+    supplier_id = request.form.get('supplier_id')
+    amount = float(request.form.get('amount', 0))
+    payment_type = request.form.get('payment_type', 'cash')
+    reference_number = request.form.get('reference_number', '')
+    notes = request.form.get('notes', '')
+
+    # التحقق من صحة البيانات
+    supplier = Supplier.query.get(supplier_id)
+    if not supplier:
+        flash('المورد غير موجود', 'danger')
+        return redirect(url_for('supplier_payments'))
+
+    if amount <= 0:
+        flash('المبلغ يجب أن يكون أكبر من صفر', 'danger')
+        return redirect(url_for('supplier_payments'))
+
+    if amount > supplier.balance:
+        flash(f'المبلغ المطلوب ({amount:,.2f} ريال) يتجاوز المديونية ({supplier.balance:,.2f} ريال)', 'danger')
+        return redirect(url_for('supplier_payments'))
+
+    # إنشاء طلب سداد
+    payment = SupplierPayment(
+        supplier_id=supplier_id,
+        amount=amount,
+        payment_type=payment_type,
+        reference_number=reference_number,
+        notes=notes,
+        created_by=current_user.id,
+        cash_status='pending'  # تنتظر موافقة الصندوق
+    )
+    db.session.add(payment)
+    db.session.commit()
+
+    flash(f'تم تسجيل دفعة للمورد {supplier.name} بمبلغ {amount:,.2f} ريال وتنتظر موافقة الصندوق', 'success')
+    return redirect(url_for('supplier_payments'))
+
+
+@app.route('/suppliers/payments/approve/<int:id>', methods=['POST'])
+@login_required
+@permission_required(Permission.MANAGE_CASH)
+def approve_supplier_payment(id):
+    """الموافقة على سداد مورد"""
+    payment = SupplierPayment.query.get_or_404(id)
+
+    if payment.cash_status == 'approved':
+        flash('تمت الموافقة على هذه الدفعة مسبقاً', 'warning')
+        return redirect(url_for('supplier_payments'))
+
+    # الموافقة على الدفعة
+    payment.cash_status = 'approved'
+    payment.cash_approved_by = current_user.id
+    payment.cash_approved_at = datetime.now()
+
+    # تحديث رصيد المورد
+    supplier = Supplier.query.get(payment.supplier_id)
+    if supplier:
+        supplier.balance -= payment.amount
+
+    # تسجيل حركة صرف من الصندوق
+    cash_transaction = CashTransaction(
+        type='expense',
+        amount=payment.amount,
+        description=f'سداد للمورد {supplier.name}',
+        reference_type='supplier_payment',
+        reference_id=payment.id,
+        user_id=current_user.id
+    )
+    db.session.add(cash_transaction)
+
+    # تحديث رصيد الصندوق
+    cash_box = CashBox.query.first()
+    if cash_box:
+        cash_box.balance -= payment.amount
+        cash_box.updated_at = datetime.now()
+
+    db.session.commit()
+    flash(f'تمت الموافقة على سداد {payment.amount:,.2f} ريال للمورد {supplier.name}', 'success')
+    return redirect(url_for('supplier_payments'))
+
+
+@app.route('/suppliers/payments/reject/<int:id>', methods=['POST'])
+@login_required
+@permission_required(Permission.MANAGE_CASH)
+def reject_supplier_payment(id):
+    """رفض سداد مورد"""
+    payment = SupplierPayment.query.get_or_404(id)
+    reason = request.form.get('reason', '')
+
+    payment.cash_status = 'rejected'
+    payment.notes = f"{payment.notes}\nالرفض: {reason}" if payment.notes else f"الرفض: {reason}"
+
+    db.session.commit()
+    flash(f'تم رفض سداد المورد: {reason}', 'warning')
+    return redirect(url_for('supplier_payments'))
 
 @app.route('/sales')
 @login_required
@@ -622,7 +1143,6 @@ def add_purchase():
 def sales():
     sales_list = SaleOrder.query.order_by(SaleOrder.sale_date.desc()).all()
     return render_template('sales/index.html', sales=sales_list)
-
 
 @app.route('/sales/add', methods=['GET', 'POST'])
 @login_required
@@ -637,66 +1157,332 @@ def add_sale():
         total_amount = float(request.form.get('total_amount'))
         paid_amount = float(request.form.get('paid_amount', 0))
 
-        sale = SaleOrder(
-            customer_id=customer_id,
-            total_amount=total_amount,
-            paid_amount=paid_amount,
-            payment_type=payment_type,
-            status='pending',  # ✅ تنتظر موافقة الصندوق
-            cash_status='pending',  # ✅ تنتظر الموافقة المالية
-            created_by=current_user.id
-        )
-        db.session.add(sale)
-        db.session.flush()
-
-        # إضافة الأصناف (تحديث المخزون مؤقتاً أو لا؟ حسب الطلب)
-        items_data = json.loads(request.form.get('items_data', '[]'))
-        for item in items_data:
-            sale_item = SaleItem(
-                sale_order_id=sale.id,
-                product_id=item['product_id'],
-                quantity=item['quantity'],
-                unit_price=item['unit_price'],
-                total_price=item['quantity'] * item['unit_price']
+        # ✅ المنطق المحاسبي الصحيح للمبيعات
+        if payment_type == 'cash':
+            # بيع نقدي - يحتاج موافقة الصندوق
+            sale = SaleOrder(
+                customer_id=customer_id,
+                total_amount=total_amount,
+                paid_amount=paid_amount,
+                payment_type=payment_type,
+                status='pending',
+                cash_status='pending',  # تنتظر الموافقة المالية
+                created_by=current_user.id
             )
-            db.session.add(sale_item)
+            db.session.add(sale)
+            db.session.flush()
 
-            # ⚠️ لا يتم تحديث المخزون حتى موافقة الصندوق
-            # product = Product.query.get(item['product_id'])
-            # product.quantity -= item['quantity']  # مؤجل
+            # إضافة الأصناف (بدون تحديث المخزون)
+            items_data = json.loads(request.form.get('items_data', '[]'))
+            for item in items_data:
+                sale_item = SaleItem(
+                    sale_order_id=sale.id,
+                    product_id=item['product_id'],
+                    quantity=item['quantity'],
+                    unit_price=item['unit_price'],
+                    total_price=item['quantity'] * item['unit_price']
+                )
+                db.session.add(sale_item)
 
-        # ✅ لا يتم تحديث مديونية العميل ولا الصندوق حتى الموافقة
-        # ✅ لا يتم تسجيل أي معاملة مالية
+            db.session.commit()
+            flash('تم تسجيل عملية البيع النقدية وتنتظر موافقة الصندوق', 'info')
 
-        db.session.commit()
-        flash('تم تسجيل عملية البيع بنجاح وتنتظر موافقة الصندوق', 'info')
+        else:  # credit - بيع آجل
+            # بيع آجل - لا يحتاج موافقة الصندوق
+            sale = SaleOrder(
+                customer_id=customer_id,
+                total_amount=total_amount,
+                paid_amount=paid_amount,
+                payment_type=payment_type,
+                status='completed',
+                cash_status='approved',  # موافقة تلقائية
+                cash_approved_by=current_user.id,
+                cash_approved_at=datetime.now(),
+                created_by=current_user.id
+            )
+            db.session.add(sale)
+            db.session.flush()
+
+            # إضافة الأصناف وتحديث المخزون فوراً
+            items_data = json.loads(request.form.get('items_data', '[]'))
+            for item in items_data:
+                sale_item = SaleItem(
+                    sale_order_id=sale.id,
+                    product_id=item['product_id'],
+                    quantity=item['quantity'],
+                    unit_price=item['unit_price'],
+                    total_price=item['quantity'] * item['unit_price']
+                )
+                db.session.add(sale_item)
+
+                # ✅ تحديث المخزون فوراً للبيع الآجل
+                product = Product.query.get(item['product_id'])
+                if product:
+                    product.quantity -= item['quantity']
+
+            # ✅ تحديث مديونية العميل (زيادة المديونية للمبلغ غير المدفوع)
+            if total_amount > paid_amount:
+                customer = Customer.query.get(customer_id)
+                if customer:
+                    customer.balance += (total_amount - paid_amount)
+
+            db.session.commit()
+            flash('تم تسجيل عملية البيع الآجلة وتحديث المخزون والمبيعات بنجاح', 'success')
+
         return redirect(url_for('sales'))
 
     return render_template('sales/add.html', customers=customers, products=products)
 
 
-# ==================== إدارة التحصيل ====================
+# ==================== تعديل وحذف المبيعات ====================
 
+@app.route('/sales/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+@permission_required(Permission.ADD_SALE)
+def edit_sale(id):
+    sale = SaleOrder.query.get_or_404(id)
+    customers = Customer.query.all()
+    products = Product.query.all()
+
+    # التحقق: لا يمكن تعديل عملية مكتملة
+    if sale.status == 'completed':
+        flash('لا يمكن تعديل عملية بيع مكتملة', 'danger')
+        return redirect(url_for('sales'))
+
+    if sale.cash_status == 'approved':
+        flash('لا يمكن تعديل عملية بيع تمت الموافقة عليها', 'danger')
+        return redirect(url_for('sales'))
+
+    if request.method == 'POST':
+        customer_id = request.form.get('customer_id')
+        payment_type = request.form.get('payment_type')
+        total_amount = float(request.form.get('total_amount'))
+        paid_amount = float(request.form.get('paid_amount', 0))
+
+        # حفظ البيانات القديمة للمخزون
+        old_items = {item.product_id: item.quantity for item in sale.items}
+
+        # تحديث بيانات أمر البيع
+        sale.customer_id = customer_id
+        sale.total_amount = total_amount
+        sale.paid_amount = paid_amount
+        sale.payment_type = payment_type
+
+        # حذف الأصناف القديمة
+        for item in sale.items:
+            db.session.delete(item)
+
+        db.session.flush()
+
+        # إضافة الأصناف الجديدة
+        items_data = json.loads(request.form.get('items_data', '[]'))
+        for item in items_data:
+            sale_item = SaleItem(
+                sale_order_id=sale.id,
+                product_id=item['product_id'],
+                quantity=int(item['quantity']),
+                unit_price=float(item['unit_price']),
+                total_price=int(item['quantity']) * float(item['unit_price'])
+            )
+            db.session.add(sale_item)
+
+        # إذا كانت العملية موافق عليها، تحديث المخزون
+        if sale.cash_status == 'approved':
+            # إعادة الكميات القديمة
+            for product_id, old_qty in old_items.items():
+                product = Product.query.get(product_id)
+                if product:
+                    product.quantity += old_qty
+
+            # خصم الكميات الجديدة
+            for item in items_data:
+                product = Product.query.get(item['product_id'])
+                if product:
+                    product.quantity -= item['quantity']
+
+        # تحديث حالة العملية
+        if payment_type == 'cash':
+            sale.status = 'pending'
+            sale.cash_status = 'pending'
+        else:
+            sale.status = 'completed'
+            sale.cash_status = 'approved'
+
+        db.session.commit()
+        flash('تم تعديل عملية البيع بنجاح', 'success')
+        return redirect(url_for('sales'))
+
+    # عرض صفحة التعديل
+    items_json = []
+    for item in sale.items:
+        product_name = item.product.name if item.product else 'منتج غير موجود'
+        items_json.append({
+            'product_id': item.product_id,
+            'product_name': product_name,
+            'quantity': item.quantity,
+            'unit_price': item.unit_price,
+            'total_price': item.total_price
+        })
+
+    items_json_str = json.dumps(items_json)
+
+    return render_template('sales/edit.html',
+                           sale=sale,
+                           customers=customers,
+                           products=products,
+                           items_json=items_json_str)
+
+
+@app.route('/sales/delete/<int:id>')
+@login_required
+@permission_required(Permission.ADD_SALE)
+def delete_sale(id):
+    sale = SaleOrder.query.get_or_404(id)
+
+    # التحقق: لا يمكن حذف عملية مكتملة أو موافق عليها
+    if sale.cash_status == 'approved':
+        flash('لا يمكن حذف عملية بيع تمت الموافقة عليها مسبقاً', 'danger')
+        return redirect(url_for('sales'))
+
+    if sale.status == 'completed':
+        flash('لا يمكن حذف عملية بيع مكتملة', 'danger')
+        return redirect(url_for('sales'))
+
+    # حذف عناصر البيع أولاً
+    for item in sale.items:
+        db.session.delete(item)
+
+    # حذف أمر البيع
+    db.session.delete(sale)
+    db.session.commit()
+
+    flash('تم حذف عملية البيع بنجاح', 'success')
+    return redirect(url_for('sales'))
+
+
+@app.route('/sales/cancel/<int:id>')
+@login_required
+@permission_required(Permission.ADD_SALE)
+def cancel_sale(id):
+    """إلغاء عملية بيع (بدلاً من حذفها)"""
+    sale = SaleOrder.query.get_or_404(id)
+
+    # التحقق: لا يمكن إلغاء عملية مكتملة
+    if sale.status == 'completed':
+        flash('لا يمكن إلغاء عملية بيع مكتملة', 'danger')
+        return redirect(url_for('sales'))
+
+    # إذا كانت العملية قد تمت الموافقة عليها مسبقاً، نعيد المخزون
+    if sale.cash_status == 'approved':
+        for item in sale.items:
+            product = Product.query.get(item.product_id)
+            if product:
+                product.quantity += item.quantity
+
+    # تحديث الحالة إلى ملغاة
+    sale.status = 'cancelled'
+    sale.cash_status = 'rejected'
+    sale.cash_rejection_reason = 'تم الإلغاء بواسطة المستخدم'
+
+    db.session.commit()
+    flash('تم إلغاء عملية البيع بنجاح', 'success')
+    return redirect(url_for('sales'))
+
+
+@app.route('/sales/approve/<int:id>', methods=['POST'])
+@login_required
+@permission_required(Permission.MANAGE_CASH)
+def approve_sale_direct(id):
+    """موافقة مباشرة على عملية بيع (بدون الحاجة لصفحة الموافقات)"""
+    sale = SaleOrder.query.get_or_404(id)
+
+    if sale.cash_status == 'approved':
+        flash('تمت الموافقة على هذه العملية مسبقاً', 'warning')
+        return redirect(url_for('sales'))
+
+    if sale.payment_type != 'cash':
+        flash('المبيعات الآجلة لا تحتاج موافقة الصندوق', 'warning')
+        return redirect(url_for('sales'))
+
+    # الموافقة على العملية
+    sale.cash_status = 'approved'
+    sale.cash_approved_by = current_user.id
+    sale.cash_approved_at = datetime.now()
+    sale.status = 'completed'
+
+    # تحديث المخزون
+    for item in sale.items:
+        product = Product.query.get(item.product_id)
+        if product:
+            product.quantity -= item.quantity
+
+    # تسجيل حركة الصندوق
+    if sale.paid_amount > 0:
+        cash_transaction = CashTransaction(
+            type='income',
+            amount=sale.paid_amount,
+            description=f'بيع نقدي من عميل {sale.customer.name}',
+            reference_type='sale',
+            reference_id=sale.id,
+            user_id=current_user.id
+        )
+        db.session.add(cash_transaction)
+
+        cash_box = CashBox.query.first()
+        if cash_box:
+            cash_box.balance += sale.paid_amount
+            cash_box.updated_at = datetime.now()
+
+    db.session.commit()
+    flash(f'تمت الموافقة على عملية البيع رقم {sale.id}', 'success')
+    return redirect(url_for('sales'))
+
+
+@app.route('/sales/print/<int:id>')
+@login_required
+@permission_required(Permission.VIEW_SALES)
+def print_sale(id):
+    """طباعة تفاصيل عملية البيع"""
+    sale = SaleOrder.query.get_or_404(id)
+    return render_template('sales/print.html', sale=sale)
+
+# ==================== إدارة التحصيل ====================
 @app.route('/collections')
 @login_required
 @permission_required(Permission.VIEW_COLLECTIONS)
 def collections():
+    # جلب جميع التحصيلات
     collections_list = Collection.query.order_by(Collection.collection_date.desc()).all()
-    debt_customers = Customer.query.filter(Customer.balance > 0).all()
-    collectors = User.query.filter(User.role == UserRole.COLLECTOR.value).all()
 
-    # حساب تحصيلات اليوم
+    # جلب العملاء الذين عليهم مديونية (balance > 0)
+    debt_customers = Customer.query.filter(Customer.balance > 0).all()
+
+    # جلب المحصلين (collector + admin)
+    collectors = User.query.filter(
+        (User.role == UserRole.COLLECTOR.value) | (User.role == UserRole.ADMIN.value)
+    ).all()
+
+    # حساب تحصيلات اليوم (المعتمدة فقط)
     today = datetime.now().date()
     today_collections = Collection.query.filter(
-        db.func.date(Collection.collection_date) == today
+        db.func.date(Collection.collection_date) == today,
+        Collection.cash_status == 'approved'  # فقط المعتمدة
     ).all()
     today_collections_total = sum(c.amount for c in today_collections)
 
-    # حساب إجمالي التحصيلات
-    total_collections = sum(c.amount for c in collections_list)
+    # حساب إجمالي التحصيلات (المعتمدة فقط)
+    approved_collections = [c for c in collections_list if c.cash_status == 'approved']
+    total_collections = sum(c.amount for c in approved_collections)
 
     # حساب إجمالي المديونيات
     total_debts = sum(c.balance for c in debt_customers)
+
+    # تحصيلات تنتظر الموافقة
+    pending_collections = Collection.query.filter_by(cash_status='pending').count()
+
+    # إجمالي العملاء
+    total_customers = Customer.query.count()
+    customers_with_debt = len(debt_customers)
 
     return render_template('collections/index.html',
                            collections=collections_list,
@@ -704,37 +1490,76 @@ def collections():
                            collectors=collectors,
                            today_collections_total=today_collections_total,
                            total_collections=total_collections,
-                           total_debts=total_debts)
+                           total_debts=total_debts,
+                           pending_collections=pending_collections,
+                           total_customers=total_customers,
+                           customers_with_debt=customers_with_debt)
+
 
 @app.route('/collections/add', methods=['POST'])
 @login_required
 @permission_required(Permission.ADD_COLLECTION)
 def add_collection():
     customer_id = request.form.get('customer_id')
-    amount = float(request.form.get('amount'))
+    amount = float(request.form.get('amount', 0))
     collector_id = request.form.get('collector_id')
     notes = request.form.get('notes', '')
+
+    # التحقق من صحة البيانات
+    if not customer_id:
+        flash('الرجاء اختيار عميل', 'danger')
+        return redirect(url_for('collections'))
+
+    if amount <= 0:
+        flash('المبلغ يجب أن يكون أكبر من صفر', 'danger')
+        return redirect(url_for('collections'))
+
+    # جلب العميل للتحقق من المديونية
+    customer = Customer.query.get(customer_id)
+    if not customer:
+        flash('العميل غير موجود', 'danger')
+        return redirect(url_for('collections'))
+
+    # التحقق من أن المبلغ لا يتجاوز المديونية
+    if amount > customer.balance:
+        flash(f'المبلغ المحصل ({amount:,.2f} ر.ي) يتجاوز المديونية ({customer.balance:,.2f} ر.ي)', 'danger')
+        return redirect(url_for('collections'))
+
+    # إذا لم يتم تحديد محصل، استخدم المستخدم الحالي
+    if not collector_id:
+        collector_id = current_user.id
 
     collection = Collection(
         customer_id=customer_id,
         collector_id=collector_id,
         amount=amount,
         notes=notes,
-        cash_status='pending'  # ✅ تنتظر موافقة الصندوق
+        cash_status='pending'  # تنتظر موافقة الصندوق
     )
     db.session.add(collection)
-
-    # ✅ لا يتم تحديث مديونية العميل حتى الموافقة
-    # customer = Customer.query.get(customer_id)
-    # customer.balance -= amount  # مؤجل
-
-    # ✅ لا يتم تسجيل معاملة مالية
-
     db.session.commit()
-    flash('تم تسجيل عملية التحصيل بنجاح وتنتظر موافقة الصندوق', 'info')
+
+    flash(f'تم تسجيل تحصيل بمبلغ {amount:,.2f} ر.ي للعميل {customer.name} وتنتظر موافقة الصندوق', 'success')
     return redirect(url_for('collections'))
 
 
+@app.route('/collections/customer/<int:id>/history')
+@login_required
+def customer_collections_history(id):
+    """API لجلب تاريخ تحصيلات العميل"""
+    customer = Customer.query.get_or_404(id)
+    collections = Collection.query.filter_by(customer_id=id).order_by(Collection.collection_date.desc()).limit(10).all()
+
+    return jsonify({
+        'customer_name': customer.name,
+        'balance': customer.balance,
+        'collections': [{
+            'date': c.collection_date.strftime('%Y-%m-%d %H:%M'),
+            'amount': c.amount,
+            'collector': c.collector.full_name if c.collector else '-',
+            'status': 'معتمد' if c.cash_status == 'approved' else 'قيد المراجعة'
+        } for c in collections]
+    })
 # ==================== أمانات التجميد ====================
 
 @app.route('/freeze-deposits')
@@ -766,7 +1591,7 @@ def add_freeze_deposit():
             product = Product(
                 name=product_name,
                 category=category,
-                unit='قطعة',
+                unit=0,
                 purchase_price=0,
                 selling_price=selling_price,
                 quantity=quantity,
@@ -834,7 +1659,6 @@ def return_freeze_deposit(id):
 
 
 # ==================== إدارة الصندوق ====================
-
 @app.route('/cash')
 @login_required
 @permission_required(Permission.VIEW_CASH)
@@ -854,20 +1678,25 @@ def cash_index():
     # إحصائيات اليوم
     today_cash_sales = db.session.query(db.func.sum(SaleOrder.paid_amount)).filter(
         db.func.date(SaleOrder.sale_date) == today,
-        SaleOrder.payment_type == 'cash'
+        SaleOrder.payment_type == 'cash',
+        SaleOrder.cash_status == 'approved'
     ).scalar() or 0
 
     today_credit_sales = db.session.query(db.func.sum(SaleOrder.total_amount)).filter(
         db.func.date(SaleOrder.sale_date) == today,
-        SaleOrder.payment_type == 'credit'
+        SaleOrder.payment_type == 'credit',
+        SaleOrder.cash_status == 'approved'
     ).scalar() or 0
 
     today_collections = db.session.query(db.func.sum(Collection.amount)).filter(
-        db.func.date(Collection.collection_date) == today
+        db.func.date(Collection.collection_date) == today,
+        Collection.cash_status == 'approved'
     ).scalar() or 0
 
     today_purchases = db.session.query(db.func.sum(PurchaseOrder.paid_amount)).filter(
-        db.func.date(PurchaseOrder.order_date) == today
+        db.func.date(PurchaseOrder.order_date) == today,
+        PurchaseOrder.payment_type == 'cash',
+        PurchaseOrder.cash_status == 'approved'
     ).scalar() or 0
 
     today_deposits = db.session.query(db.func.sum(CashTransaction.amount)).filter(
@@ -875,8 +1704,15 @@ def cash_index():
         CashTransaction.type == 'deposit'
     ).scalar() or 0
 
+    # حساب الإجماليات
     total_income = today_cash_sales + today_collections + today_deposits
     total_expense = today_purchases
+    total_net = total_income - total_expense
+
+    # حساب عدد المعاملات المنتظرة للموافقات
+    pending_count = PurchaseOrder.query.filter_by(cash_status='pending', payment_type='cash').count()
+    pending_count += SaleOrder.query.filter_by(cash_status='pending', payment_type='cash').count()
+    pending_count += Collection.query.filter_by(cash_status='pending').count()
 
     return render_template('cash/index.html',
                            cash_box=cash_box,
@@ -887,8 +1723,9 @@ def cash_index():
                            today_purchases=today_purchases,
                            today_deposits=today_deposits,
                            total_income=total_income,
-                           total_expense=total_expense)
-
+                           total_expense=total_expense,
+                           total_net=total_net,
+                           pending_count=pending_count)
 
 @app.route('/cash/journal')
 @login_required
@@ -1091,36 +1928,67 @@ def cash_transactions():
 def cash_approvals():
     """عرض المعاملات التي تنتظر موافقة الصندوق"""
 
-    # المشتريات المنتظرة
-    pending_purchases = PurchaseOrder.query.filter_by(cash_status='pending').all()
+    # ✅ حالة 1: مشتريات نقدية كاملة
+    cash_purchases = PurchaseOrder.query.filter_by(
+        cash_status='pending',
+        payment_type='cash'
+    ).all()
 
-    # المبيعات المنتظرة
-    pending_sales = SaleOrder.query.filter_by(cash_status='pending').all()
+    # ✅ حالة 2: مشتريات آجلة مع دفعة مقدمة (paid_amount = 0 ولكن cash_amount > 0)
+    advance_purchases = PurchaseOrder.query.filter(
+        PurchaseOrder.cash_status == 'pending',
+        PurchaseOrder.payment_type == 'credit',
+        PurchaseOrder.paid_amount == 0
+    ).all()
 
-    # التحصيلات المنتظرة
+    # ✅ مبيعات نقدية
+    pending_sales = SaleOrder.query.filter_by(
+        cash_status='pending',
+        payment_type='cash'
+    ).all()
+
+    # ✅ تحصيلات
     pending_collections = Collection.query.filter_by(cash_status='pending').all()
 
     return render_template('cash/approvals.html',
-                           pending_purchases=pending_purchases,
+                           cash_purchases=cash_purchases,
+                           advance_purchases=advance_purchases,
                            pending_sales=pending_sales,
                            pending_collections=pending_collections)
-
 
 @app.route('/cash/approve/<string:type>/<int:id>', methods=['POST'])
 @login_required
 @permission_required(Permission.MANAGE_CASH)
 def approve_transaction(type, id):
-    """الموافقة على معاملة مالية"""
+    """الموافقة على معاملة مالية - للمعاملات النقدية والدفعات المقدمة"""
 
     action = request.form.get('action')  # approve or reject
     reason = request.form.get('reason', '')
+    cash_amount = float(request.form.get('cash_amount', 0))  # المبلغ النقدي للموافقة عليه
 
     if type == 'purchase':
         transaction = PurchaseOrder.query.get_or_404(id)
+
+        # ✅ حالة 1: شراء نقدي كامل
+        if transaction.payment_type == 'cash':
+            cash_amount = transaction.total_amount
+        # ✅ حالة 2: شراء آجل مع دفعة مقدمة
+        elif transaction.payment_type == 'credit' and transaction.paid_amount == 0 and cash_amount > 0:
+            pass  # سيتم استخدام cash_amount من النموذج
+        else:
+            flash('هذه المعاملة لا تحتاج موافقة الصندوق', 'warning')
+            return redirect(url_for('cash_approvals'))
+
     elif type == 'sale':
         transaction = SaleOrder.query.get_or_404(id)
+        if transaction.payment_type != 'cash':
+            flash('المعاملات الآجلة لا تحتاج موافقة الصندوق', 'warning')
+            return redirect(url_for('cash_approvals'))
+        cash_amount = transaction.total_amount
+
     elif type == 'collection':
         transaction = Collection.query.get_or_404(id)
+        cash_amount = transaction.amount
     else:
         flash('نوع المعاملة غير صحيح', 'danger')
         return redirect(url_for('cash_approvals'))
@@ -1131,19 +1999,35 @@ def approve_transaction(type, id):
         transaction.cash_approved_by = current_user.id
         transaction.cash_approved_at = datetime.now()
 
-        # ✅ تحديث الصندوق والمعاملات المالية
         if type == 'purchase':
-            # تحديث المخزون
+            # تحديث المخزون (للمشتريات النقدية أو التي لها دفعة مقدمة)
             for item in transaction.items:
                 product = Product.query.get(item.product_id)
-                product.quantity += item.quantity
-                product.purchase_price = item.unit_price
+                if product:
+                    product.quantity += item.quantity
+                    product.purchase_price = item.unit_price
+
+            # تحديث المبلغ المدفوع
+            if transaction.payment_type == 'cash':
+                # شراء نقدي: دفع كامل المبلغ
+                transaction.paid_amount = transaction.total_amount
+                transaction.remaining_amount = 0
+            else:
+                # شراء آجل مع دفعة مقدمة: دفع المبلغ المقدم فقط
+                transaction.paid_amount = cash_amount
+                transaction.remaining_amount = transaction.total_amount - cash_amount
+
+            # تحديث رصيد المورد (الديون المتبقية)
+            if transaction.remaining_amount > 0:
+                supplier = Supplier.query.get(transaction.supplier_id)
+                if supplier:
+                    supplier.balance += transaction.remaining_amount
 
             # تسجيل حركة صرف من الصندوق
-            if transaction.paid_amount > 0:
+            if cash_amount > 0:
                 cash_transaction = CashTransaction(
                     type='expense',
-                    amount=transaction.paid_amount,
+                    amount=cash_amount,
                     description=f'شراء من مورد {transaction.supplier.name}',
                     reference_type='purchase',
                     reference_id=transaction.id,
@@ -1154,28 +2038,33 @@ def approve_transaction(type, id):
                 # تحديث رصيد الصندوق
                 cash_box = CashBox.query.first()
                 if cash_box:
-                    cash_box.balance -= transaction.paid_amount
+                    cash_box.balance -= cash_amount
                     cash_box.updated_at = datetime.now()
 
-            flash(f'تمت الموافقة على عملية الشراء رقم {transaction.id}', 'success')
+            transaction.status = 'completed'
+
+            if transaction.payment_type == 'cash':
+                flash(f'تمت الموافقة على عملية الشراء النقدية بقيمة {cash_amount:,.2f} ريال', 'success')
+            else:
+                flash(f'تمت الموافقة على الدفعة المقدمة بقيمة {cash_amount:,.2f} ريال', 'success')
 
         elif type == 'sale':
-            # تحديث المخزون (خصم الكميات)
+            # تحديث المخزون (خصم الكميات للمبيعات النقدية)
             for item in transaction.items:
                 product = Product.query.get(item.product_id)
-                product.quantity -= item.quantity
+                if product:
+                    product.quantity -= item.quantity
 
-            # تحديث مديونية العميل
-            if transaction.payment_type == 'credit':
-                customer = Customer.query.get(transaction.customer_id)
-                customer.balance += (transaction.total_amount - transaction.paid_amount)
+            # تحديث المبلغ المدفوع
+            transaction.paid_amount = transaction.total_amount
+            transaction.remaining_amount = 0
 
             # تسجيل حركة إيداع في الصندوق
-            if transaction.paid_amount > 0:
+            if cash_amount > 0:
                 cash_transaction = CashTransaction(
                     type='income',
-                    amount=transaction.paid_amount,
-                    description=f'مبيعات من عميل {transaction.customer.name}',
+                    amount=cash_amount,
+                    description=f'بيع نقدي من عميل {transaction.customer.name}',
                     reference_type='sale',
                     reference_id=transaction.id,
                     user_id=current_user.id
@@ -1185,20 +2074,25 @@ def approve_transaction(type, id):
                 # تحديث رصيد الصندوق
                 cash_box = CashBox.query.first()
                 if cash_box:
-                    cash_box.balance += transaction.paid_amount
+                    cash_box.balance += cash_amount
                     cash_box.updated_at = datetime.now()
 
-            flash(f'تمت الموافقة على عملية البيع رقم {transaction.id}', 'success')
+            transaction.status = 'completed'
+            flash(f'تمت الموافقة على عملية البيع النقدية بقيمة {cash_amount:,.2f} ريال', 'success')
 
         elif type == 'collection':
             # تحديث مديونية العميل
             customer = Customer.query.get(transaction.customer_id)
-            customer.balance -= transaction.amount
+            if customer:
+                customer.balance -= cash_amount
+
+            # تحديث المبلغ المحصل
+            transaction.amount = cash_amount
 
             # تسجيل حركة إيداع في الصندوق
             cash_transaction = CashTransaction(
                 type='income',
-                amount=transaction.amount,
+                amount=cash_amount,
                 description=f'تحصيل من عميل {customer.name}',
                 reference_type='collection',
                 reference_id=transaction.id,
@@ -1209,17 +2103,23 @@ def approve_transaction(type, id):
             # تحديث رصيد الصندوق
             cash_box = CashBox.query.first()
             if cash_box:
-                cash_box.balance += transaction.amount
+                cash_box.balance += cash_amount
                 cash_box.updated_at = datetime.now()
 
-            flash(f'تمت الموافقة على عملية التحصيل رقم {transaction.id}', 'success')
-
-        transaction.status = 'completed'
+            transaction.status = 'completed'
+            flash(f'تمت الموافقة على عملية التحصيل بقيمة {cash_amount:,.2f} ريال', 'success')
 
     else:  # reject
         transaction.cash_status = 'rejected'
         transaction.cash_rejection_reason = reason
         transaction.status = 'cancelled'
+
+        # إذا كانت دفعة مقدمة، لا يوجد تغيير في المخزون
+        if type == 'purchase' and transaction.payment_type == 'credit':
+            # حذف عناصر الشراء (لأن المخزون لم يتغير)
+            for item in transaction.items:
+                db.session.delete(item)
+
         flash(f'تم رفض المعاملة: {reason}', 'warning')
 
     db.session.commit()

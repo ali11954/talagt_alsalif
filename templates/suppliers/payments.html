@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}سداد الموردين{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-money-bill-wave text-success"></i> سداد الموردين</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('suppliers') }}">الموردين</a></li>
+                    <li class="breadcrumb-item active">سداد</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <button class="btn btn-secondary btn-sm" onclick="window.print()">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+        </div>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h5 class="mb-0">{{ "{:,.2f}".format(suppliers|sum(attribute='balance')) }} ر.ي</h5>
+                    <small>إجمالي المديونيات للموردين</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h5 class="mb-0">{{ "{:,.2f}".format(total_paid) }} ر.ي</h5>
+                    <small>إجمالي المبالغ المسددة</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h5 class="mb-0">{{ pending_payments }}</h5>
+                    <small>مدفوعات تنتظر الموافقة</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- نموذج تسديد جديد -->
+        <div class="col-md-5 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-plus-circle"></i> تسجيل دفعة جديدة
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('add_supplier_payment') }}">
+                        <div class="mb-3">
+                            <label class="form-label">المورد *</label>
+                            <select name="supplier_id" class="form-select" id="supplierSelect" required>
+                                <option value="">اختر المورد</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}" data-balance="{{ supplier.balance }}">
+                                    {{ supplier.name }} (مديونية: {{ "{:,.2f}".format(supplier.balance) }} ر.ي)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">المبلغ (ر.ي) *</label>
+                            <input type="number" step="0.01" name="amount" id="amount" class="form-control" required>
+                            <small class="form-text text-muted" id="balanceInfo"></small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">طريقة الدفع</label>
+                            <select name="payment_type" class="form-select">
+                                <option value="cash">نقدي</option>
+                                <option value="bank_transfer">تحويل بنكي</option>
+                                <option value="check">شيك</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">رقم المرجع (إذن / حوالة)</label>
+                            <input type="text" name="reference_number" class="form-control" placeholder="رقم الإذن أو الحوالة">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">ملاحظات</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="أي ملاحظات إضافية"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save"></i> تسجيل الدفعة
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- قائمة الموردين المدينين -->
+        <div class="col-md-7 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-users"></i> قائمة الموردين المدينين
+                    <span class="badge bg-light text-dark">{{ suppliers|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>اسم المورد</th>
+                                    <th>جهة الاتصال</th>
+                                    <th>رقم الهاتف</th>
+                                    <th>المديونية</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for supplier in suppliers|sort(attribute='balance', reverse=true) %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td><strong>{{ supplier.name }}</strong></td>
+                                    <td>{{ supplier.contact_person or '-' }}</td>
+                                    <td>{{ supplier.phone or '-' }}</td>
+                                    <td class="text-danger fw-bold">{{ "{:,.2f}".format(supplier.balance) }} ر.ي</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-success" onclick="quickPay({{ supplier.id }}, '{{ supplier.name }}', {{ supplier.balance }})">
+                                            <i class="fas fa-money-bill"></i> سداد
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-active">
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>الإجمالي:</strong></td>
+                                    <td class="text-danger"><strong>{{ "{:,.2f}".format(suppliers|sum(attribute='balance')) }} ر.ي</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- سجل المدفوعات -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <i class="fas fa-history"></i> سجل المدفوعات
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>التاريخ</th>
+                            <th>المورد</th>
+                            <th>المبلغ</th>
+                            <th>طريقة الدفع</th>
+                            <th>رقم المرجع</th>
+                            <th>الحالة</th>
+                            <th>ملاحظات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.id }}</td>
+                            <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ payment.supplier.name }}</td>
+                            <td>{{ "{:,.2f}".format(payment.amount) }} ر.ي</td>
+                            <td>
+                                {% if payment.payment_type == 'cash' %}
+                                    <span class="badge bg-success">نقدي</span>
+                                {% elif payment.payment_type == 'bank_transfer' %}
+                                    <span class="badge bg-info">تحويل بنكي</span>
+                                {% else %}
+                                    <span class="badge bg-warning">شيك</span>
+                                {% endif %}
+                             </td>
+                            <td>{{ payment.reference_number or '-' }}</td>
+                            <td>
+                                {% if payment.cash_status == 'approved' %}
+                                    <span class="badge bg-success">معتمدة</span>
+                                {% elif payment.cash_status == 'pending' %}
+                                    <span class="badge bg-warning">تنتظر الموافقة</span>
+                                {% else %}
+                                    <span class="badge bg-danger">مرفوضة</span>
+                                {% endif %}
+                             </td>
+                            <td>{{ payment.notes or '-' }}</td>
+                            <td>
+                                {% if payment.cash_status == 'pending' and current_user.role == 'admin' %}
+                                <div class="btn-group btn-group-sm">
+                                    <form method="POST" action="{{ url_for('approve_supplier_payment', id=payment.id) }}" style="display:inline;">
+                                        <button type="submit" class="btn btn-success" onclick="return confirm('هل تريد الموافقة على هذه الدفعة؟')">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ payment.id }}">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                {% endif %}
+                             </td>
+                         </tr>
+
+                        <!-- مودال رفض الدفعة -->
+                        <div class="modal fade" id="rejectModal{{ payment.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">رفض الدفعة</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="POST" action="{{ url_for('reject_supplier_payment', id=payment.id) }}">
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">سبب الرفض</label>
+                                                <textarea name="reason" class="form-control" rows="3" required></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                            <button type="submit" class="btn btn-danger">تأكيد الرفض</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const supplierSelect = document.getElementById('supplierSelect');
+    const amountInput = document.getElementById('amount');
+    const balanceInfo = document.getElementById('balanceInfo');
+
+    function quickPay(supplierId, supplierName, balance) {
+        supplierSelect.value = supplierId;
+        supplierSelect.dispatchEvent(new Event('change'));
+        amountInput.value = balance;
+        amountInput.dispatchEvent(new Event('change'));
+        document.querySelector('.col-md-5 .card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    supplierSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const balance = selectedOption.getAttribute('data-balance');
+        if (balance) {
+            balanceInfo.innerHTML = `الحد الأقصى للدفع: ${parseFloat(balance).toFixed(2)} ر.ي`;
+            amountInput.max = balance;
+        } else {
+            balanceInfo.innerHTML = '';
+        }
+    });
+
+    amountInput.addEventListener('change', function() {
+        const max = parseFloat(this.max);
+        const value = parseFloat(this.value);
+        if (value > max) {
+            alert(`المبلغ المطلوب (${value}) يتجاوز المديونية (${max})`);
+            this.value = max;
+        }
+    });
+</script>
+{% endblock %}

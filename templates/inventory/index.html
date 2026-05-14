@@ -123,7 +123,7 @@
                 <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
                 <h5>إجمالي الكميات</h5>
                 <h3 class="text-success" id="totalQuantity">{{ products|sum(attribute='quantity') }}</h3>
-                <small>قطعة</small>
+                <small></small>
             </div>
         </div>
         <div class="col-md-3 mb-3">
@@ -197,7 +197,7 @@
                             </td>
                             <td>
                                 <strong>{{ product.quantity }}</strong>
-                                <small class="text-muted">قطعة</small>
+                                <small class="text-muted"></small>
                             </td>
                             <td>{{ "{:,.2f}".format(product.purchase_price) }} ر.ي</td>
                             <td>{{ "{:,.2f}".format(product.selling_price) }} ر.ي</td>
@@ -235,7 +235,7 @@
                     <tfoot class="table-light">
                         <tr>
                             <td colspan="3" class="text-end"><strong>الإجمالي:</strong></td>
-                            <td><strong id="footerTotalQuantity">{{ products|sum(attribute='quantity') }}</strong> قطعة</td>
+                            <td><strong id="footerTotalQuantity">{{ products|sum(attribute='quantity') }}</strong> </td>
                             <td colspan="2"></td>
                             <td><strong id="footerTotalValue">{{ "{:,.2f}".format(products|sum(attribute='quantity') * (products|sum(attribute='purchase_price') / products|length if products|length > 0 else 0)) }} ر.ي</strong></td>
                             <td colspan="4"></td>
@@ -338,8 +338,8 @@
                         <div class="col-md-6">
                             <p><strong><i class="fas fa-box"></i> اسم المنتج:</strong> ${data.name}</p>
                             <p><strong><i class="fas fa-tag"></i> الفئة:</strong> ${data.category === 'water' ? 'مياه' : 'مشروبات غازية'}</p>
-                            <p><strong><i class="fas fa-cubes"></i> الكمية الحالية:</strong> ${data.quantity} قطعة</p>
-                            <p><strong><i class="fas fa-chart-line"></i> الحد الأدنى:</strong> ${data.min_quantity} قطعة</p>
+                            <p><strong><i class="fas fa-cubes"></i> الكمية الحالية:</strong> ${data.quantity} </p>
+                            <p><strong><i class="fas fa-chart-line"></i> الحد الأدنى:</strong> ${data.min_quantity} </p>
                         </div>
                         <div class="col-md-6">
                             <p><strong><i class="fas fa-money-bill"></i> سعر الشراء:</strong> ${data.purchase_price.toFixed(2)} ر.ي</p>

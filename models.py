@@ -34,35 +34,77 @@ class Permission:
     VIEW_REPORTS = 'view_reports'
     MANAGE_USERS = 'manage_users'
     MANAGE_EMPLOYEES = 'manage_employees'
+    MANAGE_SUPPLIER_PAYMENTS = 'manage_supplier_payments'  # سداد الموردين
 
 
 ROLE_PERMISSIONS = {
-    UserRole.ADMIN.value: [getattr(Permission, attr) for attr in dir(Permission) if not attr.startswith('_')],
-    UserRole.CASHIER.value: [
-        Permission.VIEW_CASH, Permission.MANAGE_CASH,
-        Permission.VIEW_JOURNAL, Permission.ADD_JOURNAL_ENTRY,
-        Permission.DAILY_CLOSING, Permission.VIEW_REPORTS
+    # المدير - جميع الصلاحيات
+    UserRole.ADMIN.value: [
+        Permission.VIEW_INVENTORY,
+        Permission.EDIT_PRODUCT,
+        Permission.VIEW_PURCHASES,
+        Permission.ADD_PURCHASE,
+        Permission.MANAGE_SUPPLIERS,
+        Permission.VIEW_SALES,
+        Permission.ADD_SALE,
+        Permission.MANAGE_CUSTOMERS,
+        Permission.VIEW_CASH,
+        Permission.MANAGE_CASH,
+        Permission.VIEW_JOURNAL,
+        Permission.ADD_JOURNAL_ENTRY,
+        Permission.DAILY_CLOSING,
+        Permission.VIEW_COLLECTIONS,
+        Permission.ADD_COLLECTION,
+        Permission.VIEW_REPORTS,
+        Permission.MANAGE_USERS,
+        Permission.MANAGE_EMPLOYEES,
+        Permission.MANAGE_SUPPLIER_PAYMENTS,
     ],
-    UserRole.STORE_KEEPER.value: [
-        Permission.VIEW_INVENTORY, Permission.EDIT_PRODUCT,
-        Permission.VIEW_REPORTS
-    ],
-    UserRole.COLLECTOR.value: [
-        Permission.VIEW_COLLECTIONS, Permission.ADD_COLLECTION,
-        Permission.MANAGE_CUSTOMERS, Permission.VIEW_REPORTS
-    ],
-    UserRole.PURCHASE_MANAGER.value: [
-        Permission.MANAGE_SUPPLIERS, Permission.VIEW_PURCHASES,
-        Permission.ADD_PURCHASE, Permission.VIEW_INVENTORY,
-        Permission.VIEW_REPORTS
-    ],
-    UserRole.SALES_MANAGER.value: [
-        Permission.MANAGE_CUSTOMERS, Permission.VIEW_SALES,
-        Permission.ADD_SALE, Permission.VIEW_INVENTORY,
-        Permission.VIEW_REPORTS
-    ]
-}
 
+    # أمين الصندوق
+    UserRole.CASHIER.value: [
+        Permission.VIEW_CASH,
+        Permission.MANAGE_CASH,
+        Permission.VIEW_JOURNAL,
+        Permission.ADD_JOURNAL_ENTRY,
+        Permission.DAILY_CLOSING,
+        Permission.VIEW_REPORTS,
+    ],
+
+    # أمين المخزن
+    UserRole.STORE_KEEPER.value: [
+        Permission.VIEW_INVENTORY,
+        Permission.EDIT_PRODUCT,
+        Permission.VIEW_REPORTS,
+    ],
+
+    # المحصل
+    UserRole.COLLECTOR.value: [
+        Permission.VIEW_COLLECTIONS,
+        Permission.ADD_COLLECTION,
+        Permission.MANAGE_CUSTOMERS,
+        Permission.VIEW_REPORTS,
+    ],
+
+    # مسؤول المشتريات
+    UserRole.PURCHASE_MANAGER.value: [
+        Permission.MANAGE_SUPPLIERS,
+        Permission.VIEW_PURCHASES,
+        Permission.ADD_PURCHASE,
+        Permission.VIEW_INVENTORY,
+        Permission.VIEW_REPORTS,
+        Permission.MANAGE_SUPPLIER_PAYMENTS,  # ✅ إضافة صلاحية سداد الموردين
+    ],
+
+    # مسؤول المبيعات
+    UserRole.SALES_MANAGER.value: [
+        Permission.MANAGE_CUSTOMERS,
+        Permission.VIEW_SALES,
+        Permission.ADD_SALE,
+        Permission.VIEW_INVENTORY,
+        Permission.VIEW_REPORTS,
+    ],
+}
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -354,3 +396,24 @@ class Transaction(db.Model):
     transaction_date = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     user = db.relationship('User', foreign_keys=[user_id], backref='transactions_list')
+
+class SupplierPayment(db.Model):
+    """سجل سداد الموردين"""
+    __tablename__ = 'supplier_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    payment_type = db.Column(db.String(20), default='cash')  # cash, bank_transfer, check
+    reference_number = db.Column(db.String(100))  # رقم الإذن أو رقم الحوالة
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    cash_status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    cash_approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    cash_approved_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    supplier = db.relationship('Supplier', backref='payments')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='supplier_payments')
+    cash_approver = db.relationship('User', foreign_keys=[cash_approved_by])

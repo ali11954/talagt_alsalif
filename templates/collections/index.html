@@ -5,11 +5,20 @@
 {% block extra_css %}
 <style>
     .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
         transition: all 0.3s;
         cursor: pointer;
     }
     .stat-card:hover {
         transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .stat-card i {
+        font-size: 2.5rem;
+        opacity: 0.8;
     }
     .filter-section {
         background: #f8f9fa;
@@ -39,6 +48,18 @@
         padding: 3px 8px;
         border-radius: 20px;
     }
+    .btn-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 25px;
+        transition: all 0.3s;
+    }
+    .btn-gradient:hover {
+        transform: translateY(-2px);
+        opacity: 0.9;
+    }
 </style>
 {% endblock %}
 
@@ -61,7 +82,7 @@
             <button class="btn btn-danger btn-sm" onclick="exportToPDF()">
                 <i class="fas fa-file-pdf"></i> PDF
             </button>
-            <button class="btn btn-info btn-sm" onclick="printReport()">
+            <button class="btn btn-info btn-sm" onclick="window.print()">
                 <i class="fas fa-print"></i> طباعة
             </button>
         </div>
@@ -71,33 +92,33 @@
     <div class="row mb-4">
         <div class="col-md-3 mb-3">
             <div class="stat-card text-center">
-                <i class="fas fa-hand-holding-usd fa-2x text-success mb-2"></i>
-                <h5>تحصيل اليوم</h5>
-                <h3 class="text-success" id="todayCollection">{{ "{:,.2f}".format(collections|selectattr('collection_date', 'date', datetime.now().date())|sum(attribute='amount')) }} ر.ي</h3>
+                <i class="fas fa-hand-holding-usd"></i>
+                <h5 class="mt-2">تحصيل اليوم</h5>
+                <h3 class="mb-0">{{ "{:,.2f}".format(today_collections_total) }} ر.ي</h3>
                 <small>المبالغ المحصلة اليوم</small>
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="stat-card text-center">
-                <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
-                <h5>إجمالي التحصيلات</h5>
-                <h3 class="text-primary" id="totalCollection">{{ "{:,.2f}".format(collections|sum(attribute='amount')) }} ر.ي</h3>
+            <div class="stat-card text-center" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <i class="fas fa-chart-line"></i>
+                <h5 class="mt-2">إجمالي التحصيلات</h5>
+                <h3 class="mb-0">{{ "{:,.2f}".format(total_collections) }} ر.ي</h3>
                 <small>جميع التحصيلات</small>
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="stat-card text-center">
-                <i class="fas fa-users fa-2x text-warning mb-2"></i>
-                <h5>العملاء المدينين</h5>
-                <h3 class="text-warning" id="debtorCount">{{ debt_customers|length }}</h3>
+            <div class="stat-card text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <i class="fas fa-users"></i>
+                <h5 class="mt-2">العملاء المدينين</h5>
+                <h3 class="mb-0">{{ customers_with_debt }}</h3>
                 <small>عميل عليهم مديونية</small>
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="stat-card text-center">
-                <i class="fas fa-chart-pie fa-2x text-danger mb-2"></i>
-                <h5>إجمالي المديونيات</h5>
-                <h3 class="text-danger" id="totalDebts">{{ "{:,.2f}".format(debt_customers|sum(attribute='balance')) }} ر.ي</h3>
+            <div class="stat-card text-center" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <i class="fas fa-chart-pie"></i>
+                <h5 class="mt-2">إجمالي المديونيات</h5>
+                <h3 class="mb-0">{{ "{:,.2f}".format(total_debts) }} ر.ي</h3>
                 <small>المبالغ المستحقة</small>
             </div>
         </div>
@@ -107,14 +128,14 @@
         <!-- نموذج تسجيل تحصيل جديد -->
         <div class="col-md-4 mb-4">
             <div class="card shadow-sm">
-                <div class="card-header bg-white">
-                    <i class="fas fa-plus-circle text-success"></i> تسجيل تحصيل جديد
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-plus-circle"></i> تسجيل تحصيل جديد
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('add_collection') }}" id="collectionForm">
                         <div class="mb-3">
                             <label class="form-label">
-                                <i class="fas fa-user ml-1"></i> العميل
+                                <i class="fas fa-user"></i> العميل
                             </label>
                             <select name="customer_id" class="form-select" id="customerSelect" required>
                                 <option value="">اختر العميل</option>
@@ -123,28 +144,27 @@
                                         data-balance="{{ customer.balance }}"
                                         data-name="{{ customer.name }}"
                                         data-phone="{{ customer.phone }}">
-                                    {{ customer.name }}
-                                    <span class="text-danger">(مديونية: {{ "{:,.2f}".format(customer.balance) }} ر.ي)</span>
+                                    {{ customer.name }} (مديونية: {{ "{:,.2f}".format(customer.balance) }} ر.ي)
                                 </option>
                                 {% endfor %}
                             </select>
-                            <div class="info-text small text-muted mt-1">
+                            <small class="form-text text-muted">
                                 <i class="fas fa-info-circle"></i> عرض العملاء المدينين فقط
-                            </div>
+                            </small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">
-                                <i class="fas fa-money-bill-wave ml-1"></i> المبلغ المحصل (ر.ي)
+                                <i class="fas fa-money-bill-wave"></i> المبلغ المحصل (ر.ي)
                             </label>
                             <input type="number" step="0.01" name="amount" id="amount" class="form-control" required
                                    placeholder="0.00" onchange="validateAmount()">
-                            <div class="info-text small text-muted mt-1" id="amountInfo"></div>
+                            <small class="form-text text-muted" id="amountInfo"></small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">
-                                <i class="fas fa-user-check ml-1"></i> المحصل
+                                <i class="fas fa-user-check"></i> المحصل
                             </label>
                             <select name="collector_id" class="form-select" required>
                                 <option value="">اختر المحصل</option>
@@ -159,17 +179,13 @@
 
                         <div class="mb-3">
                             <label class="form-label">
-                                <i class="fas fa-sticky-note ml-1"></i> ملاحظات
+                                <i class="fas fa-sticky-note"></i> ملاحظات
                             </label>
                             <textarea name="notes" class="form-control" rows="2"
                                       placeholder="رقم الإذن، طريقة الدفع..."></textarea>
                         </div>
 
-                        <div class="alert alert-info small" id="paymentInfo" style="display: none;">
-                            <i class="fas fa-info-circle"></i> سيتم تحديث مديونية العميل تلقائياً
-                        </div>
-
-                        <button type="submit" class="btn btn-success w-100">
+                        <button type="submit" class="btn btn-gradient w-100">
                             <i class="fas fa-save"></i> تسجيل التحصيل
                         </button>
                     </form>
@@ -183,7 +199,7 @@
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <div>
                         <i class="fas fa-history text-primary"></i> سجل التحصيلات
-                        <span class="badge bg-primary mr-2" id="collectionsCount">{{ collections|length }}</span>
+                        <span class="badge bg-primary">{{ collections|length }}</span>
                     </div>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-secondary" onclick="filterToday()">اليوم</button>
@@ -205,6 +221,7 @@
                                     <th>المحصل</th>
                                     <th>ملاحظات</th>
                                     <th>الحالة</th>
+                                    <th>الإجراءات</th>
                                 </tr>
                             </thead>
                             <tbody id="collectionsTableBody">
@@ -219,22 +236,29 @@
                                         {% endif %}
                                      </td>
                                     <td>{{ collection.customer.phone or '-' }}</td>
-                                    <td class="text-success fw-bold">{{ "{:,.2f}".format(collection.amount) }} ر.ي</td>
+                                    <td>{{ "{:,.2f}".format(collection.amount) }} ر.ي</td>
                                     <td>
-                                        <span class="collector-badge bg-info text-white">
-                                            <i class="fas fa-user-check"></i> {{ collection.collector.full_name }}
-                                        </span>
+                                        <span class="badge bg-info">{{ collection.collector.full_name if collection.collector else '-' }}</span>
                                      </td>
                                     <td>{{ collection.notes or '-' }}</td>
                                     <td>
                                         {% if collection.cash_status == 'approved' %}
-                                            <span class="badge bg-success">موافق عليها</span>
+                                            <span class="badge bg-success">معتمدة</span>
                                         {% elif collection.cash_status == 'pending' %}
-                                            <span class="badge bg-warning">قيد المراجعة</span>
-                                        {% elif collection.cash_status == 'rejected' %}
-                                            <span class="badge bg-danger">مرفوضة</span>
+                                            <span class="badge bg-warning">تنتظر الموافقة</span>
                                         {% else %}
-                                            <span class="badge bg-secondary">مكتملة</span>
+                                            <span class="badge bg-danger">مرفوضة</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+
+                                        {% if collection.cash_status == 'pending' and current_user.role == 'admin' %}
+                                        <form method="POST" action="{{ url_for('approve_transaction', type='collection', id=collection.id) }}" style="display:inline;">
+                                            <input type="hidden" name="action" value="approve">
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('هل تريد الموافقة على هذا التحصيل؟')">
+                                                <i class="fas fa-check"></i> موافقة
+                                            </button>
+                                        </form>
                                         {% endif %}
                                      </td>
                                  </tr>
@@ -243,8 +267,8 @@
                             <tfoot class="table-active">
                                 <tr>
                                     <td colspan="4" class="text-end"><strong>الإجمالي:</strong></td>
-                                    <td class="text-success"><strong id="footerTotal">{{ "{:,.2f}".format(collections|sum(attribute='amount')) }} ر.ي</strong></td>
-                                    <td colspan="3"></td>
+                                    <td class="text-success"><strong id="footerTotal">{{ "{:,.2f}".format(total_collections) }} ر.ي</strong></td>
+                                    <td colspan="4"></td>
                                  </tr>
                             </tfoot>
                         </table>
@@ -256,9 +280,9 @@
 
     <!-- قائمة العملاء المدينين -->
     <div class="card shadow-sm">
-        <div class="card-header bg-white">
-            <i class="fas fa-chart-pie text-warning"></i> قائمة العملاء المدينين
-            <span class="badge bg-warning mr-2">{{ debt_customers|length }}</span>
+        <div class="card-header bg-danger text-white">
+            <i class="fas fa-chart-pie"></i> قائمة العملاء المدينين
+            <span class="badge bg-light text-dark">{{ customers_with_debt }}</span>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -277,26 +301,28 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for customer in debt_customers|sort(attribute='balance', reverse=true) %}
-                        <tr class="{% if customer.balance > customer.credit_limit * 0.8 %}debt-high{% endif %}">
+                        {% for customer in debt_customers %}
+                        <tr class="{% if customer.balance > customer.credit_limit %}debt-high{% endif %}">
                             <td>{{ loop.index }}</td>
                             <td>
                                 <strong>{{ customer.name }}</strong>
                                 {% if customer.balance > customer.credit_limit %}
                                 <span class="badge bg-danger">تجاوز الحد</span>
                                 {% endif %}
-                             </td>
+                              </td>
                             <td>
-                                {% if customer.type == 'grocery' %}
-                                    <span class="badge bg-info">بقالة</span>
-                                {% elif customer.type == 'shop' %}
-                                    <span class="badge bg-primary">محل</span>
-                                {% elif customer.type == 'event' %}
-                                    <span class="badge bg-warning">أعراس</span>
+                                {% if customer.type == 'بقالة' %}
+                                    <span class="badge bg-info">🏪 بقالة</span>
+                                {% elif customer.type == 'سوبر ماركت' %}
+                                    <span class="badge bg-primary">🛒 سوبر ماركت</span>
+                                {% elif customer.type == 'مطعم' %}
+                                    <span class="badge bg-warning">🍽️ مطعم</span>
+                                {% elif customer.type == 'شركة' %}
+                                    <span class="badge bg-secondary">🏢 شركة</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">{{ customer.type }}</span>
+                                    <span class="badge bg-secondary">{{ customer.type or 'عميل' }}</span>
                                 {% endif %}
-                             </td>
+                              </td>
                             <td>{{ customer.phone or '-' }}</td>
                             <td class="text-danger fw-bold">{{ "{:,.2f}".format(customer.balance) }} ر.ي</td>
                             <td>{{ "{:,.2f}".format(customer.credit_limit) }} ر.ي</td>
@@ -308,11 +334,11 @@
                                         {{ "%.1f"|format(percentage) }}%
                                     </div>
                                 </div>
-                             </td>
+                              </td>
                             <td>
-                                {% set last_collection = collections|selectattr('customer_id', 'equalto', customer.id)|first %}
-                                {{ last_collection.collection_date.strftime('%Y-%m-%d') if last_collection else '-' }}
-                             </td>
+                                {% set last = collections|selectattr('customer_id', 'equalto', customer.id)|first %}
+                                {{ last.collection_date.strftime('%Y-%m-%d') if last else 'لا يوجد' }}
+                              </td>
                             <td>
                                 <button class="btn btn-sm btn-success" onclick="quickCollect({{ customer.id }}, '{{ customer.name }}', {{ customer.balance }})">
                                     <i class="fas fa-money-bill"></i> تحصيل
@@ -324,7 +350,7 @@
                     <tfoot class="table-active">
                         <tr>
                             <td colspan="4" class="text-end"><strong>الإجمالي:</strong></td>
-                            <td class="text-danger"><strong>{{ "{:,.2f}".format(debt_customers|sum(attribute='balance')) }} ر.ي</strong></td>
+                            <td class="text-danger"><strong>{{ "{:,.2f}".format(total_debts) }} ر.ي</strong></td>
                             <td colspan="4"></td>
                          </tr>
                     </tfoot>
@@ -345,18 +371,15 @@
         const maxDebt = parseFloat(select.options[select.selectedIndex]?.dataset.balance || 0);
         const infoDiv = document.getElementById('amountInfo');
 
-        if (amount > maxDebt) {
+        if (amount > maxDebt && maxDebt > 0) {
             infoDiv.innerHTML = '<span class="text-danger">⚠️ المبلغ أكبر من المديونية المستحقة!</span>';
-            infoDiv.style.color = 'red';
-        } else if (amount === maxDebt) {
+        } else if (amount === maxDebt && maxDebt > 0) {
             infoDiv.innerHTML = '<span class="text-success">✓ سيتم تسوية المديونية بالكامل</span>';
-            infoDiv.style.color = 'green';
-        } else {
+        } else if (amount > 0) {
             infoDiv.innerHTML = '<span class="text-info">✓ المبلغ ضمن الحد المسموح</span>';
-            infoDiv.style.color = '';
+        } else {
+            infoDiv.innerHTML = '';
         }
-
-        document.getElementById('paymentInfo').style.display = amount > 0 ? 'block' : 'none';
     }
 
     // عرض معلومات العميل عند اختياره
@@ -366,48 +389,20 @@
             const infoDiv = document.getElementById('amountInfo');
             infoDiv.innerHTML = `<span class="text-info">الحد الأقصى للتحصيل: ${parseFloat(balance).toFixed(2)} ر.ي</span>`;
             document.getElementById('amount').max = balance;
-            document.getElementById('amount').placeholder = `الحد الأقصى ${parseFloat(balance).toFixed(2)}`;
         }
     };
 
-    // تحصيل سريع من جدول المدينين
+    // تحصيل سريع
     function quickCollect(customerId, customerName, maxAmount) {
         document.getElementById('customerSelect').value = customerId;
         document.getElementById('customerSelect').dispatchEvent(new Event('change'));
         document.getElementById('amount').value = maxAmount;
         document.getElementById('amount').focus();
         validateAmount();
-
-        // تمرير الصفحة إلى النموذج
         document.querySelector('.col-md-4 .card').scrollIntoView({ behavior: 'smooth' });
-
-        // تنبيه المستخدم
-        alert(`تم تحديد العميل: ${customerName}\nالمبلغ المستحق: ${maxAmount.toFixed(2)} ر.ي`);
     }
 
-    // تصفية حسب اليوم
-    function filterToday() {
-        const today = new Date().toISOString().split('T')[0];
-        filterByDate(today, today);
-    }
-
-    // تصفية حسب الأسبوع
-    function filterWeek() {
-        const today = new Date();
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 7);
-        filterByDate(weekAgo.toISOString().split('T')[0], today.toISOString().split('T')[0]);
-    }
-
-    // تصفية حسب الشهر
-    function filterMonth() {
-        const today = new Date();
-        const monthAgo = new Date(today);
-        monthAgo.setMonth(today.getMonth() - 1);
-        filterByDate(monthAgo.toISOString().split('T')[0], today.toISOString().split('T')[0]);
-    }
-
-    // تصفية حسب نطاق تاريخ
+    // التصفية حسب التاريخ
     function filterByDate(startDate, endDate) {
         const rows = document.querySelectorAll('#collectionsTableBody tr');
         let total = 0;
@@ -418,32 +413,44 @@
             if (rowDate >= startDate && rowDate <= endDate) {
                 row.style.display = '';
                 visibleCount++;
-                const amountText = row.cells[4]?.innerText.replace(' ر.ي', '').replace(',', '') || '0';
+                const amountText = row.cells[4]?.innerText.replace(' ر.ي', '') || '0';
                 total += parseFloat(amountText);
             } else {
                 row.style.display = 'none';
             }
         });
 
-        document.getElementById('collectionsCount').innerText = visibleCount;
         document.getElementById('footerTotal').innerHTML = total.toFixed(2) + ' ر.ي';
-        document.getElementById('todayCollection').innerHTML = total.toFixed(2) + ' ر.ي';
     }
 
-    // إعادة تعيين الفلاتر
+    function filterToday() {
+        const today = new Date().toISOString().split('T')[0];
+        filterByDate(today, today);
+    }
+
+    function filterWeek() {
+        const today = new Date();
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        filterByDate(weekAgo.toISOString().split('T')[0], today.toISOString().split('T')[0]);
+    }
+
+    function filterMonth() {
+        const today = new Date();
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(today.getMonth() - 1);
+        filterByDate(monthAgo.toISOString().split('T')[0], today.toISOString().split('T')[0]);
+    }
+
     function resetFilters() {
         const rows = document.querySelectorAll('#collectionsTableBody tr');
         let total = 0;
-
         rows.forEach(row => {
             row.style.display = '';
-            const amountText = row.cells[4]?.innerText.replace(' ر.ي', '').replace(',', '') || '0';
+            const amountText = row.cells[4]?.innerText.replace(' ر.ي', '') || '0';
             total += parseFloat(amountText);
         });
-
-        document.getElementById('collectionsCount').innerText = rows.length;
         document.getElementById('footerTotal').innerHTML = total.toFixed(2) + ' ر.ي';
-        document.getElementById('todayCollection').innerHTML = total.toFixed(2) + ' ر.ي';
     }
 
     // تصدير إلى Excel
@@ -458,24 +465,18 @@
     // تصدير إلى PDF
     function exportToPDF() {
         const element = document.querySelector('.card:last-child');
-        const opt = {
+        html2pdf().set({
             margin: [10, 10, 10, 10],
             filename: `تقرير_التحصيل_${new Date().toISOString().split('T')[0]}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
-        html2pdf().set(opt).from(element).save();
-    }
-
-    // طباعة التقرير
-    function printReport() {
-        window.print();
+        }).from(element).save();
     }
 </script>
 
 <style media="print">
-    .action-buttons, .filter-section, .btn, .modal, .no-print, .card-header .btn, .col-md-4 {
+    .action-buttons, .col-md-4, .btn, .no-print {
         display: none !important;
     }
     .col-md-8 {
@@ -490,10 +491,5 @@
         padding: 20px !important;
         background: white !important;
     }
-    .debt-high {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-}
 </style>
 {% endblock %}

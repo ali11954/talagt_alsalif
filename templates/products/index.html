@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}المنتجات{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-boxes"></i> إدارة المنتجات</h2>
+        <div>
+            <button onclick="window.print()" class="btn btn-secondary ml-2">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+            <a href="{{ url_for('add_product') }}" class="btn-gradient">
+                <i class="fas fa-plus"></i> منتج جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">إجمالي المنتجات</h5>
+                    <h3>{{ total_products }}</h3>
+                    <small>صنف متنوع</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">إجمالي الكميات</h5>
+                    <h3>{{ total_quantity }}</h3>
+                    <small>قطعة</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">قيمة المخزون</h5>
+                    <h3>{{ "{:,.2f}".format(total_value) }}</h3>
+                    <small>ريال</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">منتجات منخفضة</h5>
+                    <h3>{{ low_stock_count }}</h3>
+                    <small>تحتاج إعادة تعبئة</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-white">
+            <div class="row">
+                <div class="col-md-6">
+                    <input type="text" id="searchInput" class="form-control" placeholder="بحث باسم المنتج أو الفئة...">
+                </div>
+                <div class="col-md-3">
+                    <select id="categoryFilter" class="form-control">
+                        <option value="">جميع الفئات</option>
+                        <option value="مياه">💧 مياه</option>
+                        <option value="مشروبات غازية">🥤 مشروبات غازية</option>
+                        <option value="مشروبات طاقة">⚡ مشروبات طاقة</option>
+                        <option value="أجبان">🧀 أجبان</option>
+                        <option value="ألبان">🥛 ألبان</option>
+                        <option value="زيوت">🫒 زيوت</option>
+                        <option value="مواد غذائية">🍚 مواد غذائية</option>
+                        <option value="مجمدة">❄️ مجمدة</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="stockFilter" class="form-control">
+                        <option value="">جميع المنتجات</option>
+                        <option value="low">منتجات منخفضة المخزون</option>
+                        <option value="frozen">منتجات مجمدة</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="productsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>المنتج</th>
+                            <th>الفئة</th>
+                            <th>الكمية</th>
+                            <th>سعر الشراء</th>
+                            <th>سعر البيع</th>
+                            <th>القيمة</th>
+                            <th>الموقع</th>
+                            <th>نوع المنتج</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr data-category="{{ product.category }}" data-stock="{{ 'low' if product.quantity < product.min_quantity else 'normal' }}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ product.name }}</strong></td>
+                            <td>
+                                {% if product.category == 'مياه' %}💧
+                                {% elif product.category == 'مشروبات غازية' %}🥤
+                                {% elif product.category == 'مشروبات طاقة' %}⚡
+                                {% elif product.category == 'أجبان' %}🧀
+                                {% elif product.category == 'ألبان' %}🥛
+                                {% elif product.category == 'زيوت' %}🫒
+                                {% elif product.category == 'مواد غذائية' %}🍚
+                                {% elif product.category == 'مجمدة' %}❄️
+                                {% endif %}
+                                {{ product.category }}
+                            </td>
+                            <td class="{% if product.quantity < product.min_quantity %}text-danger fw-bold{% endif %}">
+                                {{ product.quantity }} {{ product.unit }}
+                            </td>
+                            <td>{{ "{:,.2f}".format(product.purchase_price) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(product.selling_price) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(product.quantity * product.purchase_price) }} ر.ي</td>
+                            <td>{{ product.location or '-' }}</td>
+                            <td>
+                                {% if product.is_frozen %}
+                                    <span class="badge bg-info">❄️ مجمد</span>
+                                    {% if product.freeze_deposit > 0 %}
+                                        <small class="d-block">وديعة: {{ product.freeze_deposit }} ر.ي</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-success">🌡️ عادي</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewModal{{ product.id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <a href="{{ url_for('edit_product_standalone', id=product.id) }}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if product.quantity == 0 %}
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ product.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- مودال عرض التفاصيل -->
+                        <div class="modal fade" id="viewModal{{ product.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-primary text-white">
+                                        <h5 class="modal-title">{{ product.name }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <table class="table table-bordered">
+                                            <tr><th>الفئة</th><td>{{ product.category }}</td></tr>
+                                            <tr><th>الوحدة</th><td>{{ product.unit }}</td></tr>
+                                            <tr><th>الكمية</th><td>{{ product.quantity }}</td></tr>
+                                            <tr><th>الحد الأدنى</th><td>{{ product.min_quantity }}</td></tr>
+                                            <tr><th>سعر الشراء</th><td>{{ "{:,.2f}".format(product.purchase_price) }} ر.ي</td></tr>
+                                            <tr><th>سعر البيع</th><td>{{ "{:,.2f}".format(product.selling_price) }} ر.ي</td></tr>
+                                            <tr><th>الموقع</th><td>{{ product.location or '-' }}</td></tr>
+                                            {% if product.is_frozen %}
+                                            <tr><th>وديعة التجميد</th><td>{{ "{:,.2f}".format(product.freeze_deposit) }} ر.ي</td></tr>
+                                            {% endif %}
+                                            <tr><th>تاريخ الإضافة</th><td>{{ product.created_at.strftime('%Y-%m-%d') }}</td></tr>
+                                        </table>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                                        <a href="{{ url_for('edit_product_standalone', id=product.id) }}" class="btn btn-primary">تعديل</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- مودال تأكيد الحذف -->
+                        <div class="modal fade" id="deleteModal{{ product.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">تأكيد الحذف</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>هل أنت متأكد من حذف المنتج <strong>{{ product.name }}</strong>؟</p>
+                                        <p class="text-danger">تنبيه: هذا الإجراء لا يمكن التراجع عنه!</p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                                        <a href="{{ url_for('delete_product', id=product.id) }}" class="btn btn-danger">حذف</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterTable() {
+        const searchText = document.getElementById('searchInput').value.toLowerCase();
+        const categoryFilter = document.getElementById('categoryFilter').value;
+        const stockFilter = document.getElementById('stockFilter').value;
+        const rows = document.querySelectorAll('#productsTable tbody tr');
+
+        rows.forEach(row => {
+            const category = row.getAttribute('data-category');
+            const stock = row.getAttribute('data-stock');
+            const text = row.innerText.toLowerCase();
+
+            let show = true;
+
+            if (searchText && !text.includes(searchText)) show = false;
+            if (categoryFilter && category !== categoryFilter) show = false;
+            if (stockFilter === 'low' && stock !== 'low') show = false;
+            if (stockFilter === 'frozen' && !row.innerText.includes('❄️')) show = false;
+
+            row.style.display = show ? '' : 'none';
+        });
+    }
+
+    document.getElementById('searchInput')?.addEventListener('keyup', filterTable);
+    document.getElementById('categoryFilter')?.addEventListener('change', filterTable);
+    document.getElementById('stockFilter')?.addEventListener('change', filterTable);
+</script>
+
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 25px;
+        text-decoration: none;
+        transition: transform 0.3s;
+    }
+    .btn-gradient:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+    .table th {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}

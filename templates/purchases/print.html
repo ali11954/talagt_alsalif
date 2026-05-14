@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>فاتورة شراء #{{ purchase.id }}</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; padding: 20px; }
+        }
+        body {
+            font-family: 'Tahoma', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: white;
+        }
+        .invoice-container {
+            max-width: 800px;
+            margin: auto;
+            border: 1px solid #ddd;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #2c3e50;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background: #2c3e50;
+            color: white;
+        }
+        .total-row {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+        }
+        .no-print button {
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button onclick="window.print()">🖨️ طباعة</button>
+        <button onclick="window.close()">❌ إغلاق</button>
+    </div>
+
+    <div class="invoice-container">
+        <div class="header">
+            <h1>ثلاجة الصليف</h1>
+            <p>نظام إدارة التوزيع والمخزون</p>
+        </div>
+
+        <div class="info-row">
+            <div><strong>رقم الفاتورة:</strong> {{ purchase.id }}</div>
+            <div><strong>التاريخ:</strong> {{ purchase.order_date.strftime('%Y-%m-%d %H:%M') }}</div>
+            <div><strong>المورد:</strong> {{ purchase.supplier.name }}</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>سعر الوحدة</th>
+                    <th>الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in purchase.items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ "{:,.2f}".format(item.unit_price) }} ر.ي</td>
+                    <td>{{ "{:,.2f}".format(item.total_price) }} ر.ي</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <th colspan="4">الإجمالي</th>
+                    <th>{{ "{:,.2f}".format(purchase.total_amount) }} ر.ي</th>
+                </tr>
+                <tr>
+                    <th colspan="4">المدفوع</th>
+                    <th>{{ "{:,.2f}".format(purchase.paid_amount) }} ر.ي</th>
+                </tr>
+                <tr>
+                    <th colspan="4">المتبقي</th>
+                    <th>{{ "{:,.2f}".format(purchase.total_amount - purchase.paid_amount) }} ر.ي</th>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="info-row">
+            <div><strong>نوع الدفع:</strong> {{ 'نقدي' if purchase.payment_type == 'cash' else 'آجل' }}</div>
+            <div><strong>الحالة:</strong> {{ 'مكتملة' if purchase.status == 'completed' else 'معلقة' }}</div>
+        </div>
+
+        <div class="footer">
+            <p>شكراً للتعامل مع ثلاجة الصليف</p>
+            <p>تم إنشاء هذه الفاتورة بواسطة: {{ purchase.creator.full_name if purchase.creator else 'نظام ثلاجة الصليف' }}</p>
+        </div>
+    </div>
+</body>
+</html>

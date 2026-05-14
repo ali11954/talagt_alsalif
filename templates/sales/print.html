@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فاتورة بيع - {{ sale.id }}</title>
+    <style>
+        @media print {
+            body {
+                margin: 0;
+                padding: 20px;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: white;
+            color: #333;
+        }
+
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            background: white;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .company-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .invoice-title {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .invoice-title h2 {
+            color: #007bff;
+            margin: 0;
+        }
+
+        .invoice-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .invoice-details table {
+            width: 100%;
+        }
+
+        .invoice-details td {
+            padding: 5px;
+        }
+
+        .invoice-details td:first-child {
+            font-weight: bold;
+            width: 150px;
+        }
+
+        table.items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .items-table th {
+            background: #007bff;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #0056b3;
+        }
+
+        .items-table td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        .total-row {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .total-row td {
+            border-top: 2px solid #007bff;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+
+        .status-paid {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .btn-print {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .btn-print:hover {
+            background: #138496;
+        }
+
+        .amount {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .text-success {
+            color: #28a745;
+        }
+
+        .text-danger {
+            color: #dc3545;
+        }
+
+        .payment-cash {
+            background: #28a745;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+
+        .payment-credit {
+            background: #ffc107;
+            color: #333;
+            padding: 3px 10px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button class="btn-print" onclick="window.print()">
+            🖨️ طباعة الفاتورة
+        </button>
+        <button class="btn-print" onclick="window.close()" style="background: #6c757d;">
+            ❌ إغلاق
+        </button>
+    </div>
+
+    <div class="invoice-container">
+        <div class="header">
+            <div class="company-name">ثلاجة الصليف</div>
+            <div class="company-info">
+                TALAGT AL-SALIF<br>
+                هاتف: 770000000 | البريد: info@thaljat.com<br>
+                الحديدة - الصليف - اليمن
+            </div>
+        </div>
+
+        <div class="invoice-title">
+            <h2>فاتورة بيع</h2>
+        </div>
+
+        <div class="invoice-details">
+            <table>
+                <tr>
+                    <td>رقم الفاتورة:</td>
+                    <td><strong>{{ sale.id }}</strong></td>
+                    <td>التاريخ:</td>
+                    <td>{{ sale.sale_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                </tr>
+                <tr>
+                    <td>العميل:</td>
+                    <td><strong>{{ sale.customer.name }}</strong></td>
+                    <td>نوع الدفع:</td>
+                    <td>
+                        {% if sale.payment_type == 'cash' %}
+                            <span class="payment-cash">نقدي</span>
+                        {% else %}
+                            <span class="payment-credit">آجل</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>هاتف العميل:</td>
+                    <td>{{ sale.customer.phone or '-' }}</td>
+                    <td>العنوان:</td>
+                    <td>{{ sale.customer.address or '-' }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>سعر الوحدة (ريال)</th>
+                    <th>الإجمالي (ريال)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in sale.items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }} {{ item.product.unit }}</td>
+                    <td>{{ "{:,.2f}".format(item.unit_price) }}</td>
+                    <td class="amount">{{ "{:,.2f}".format(item.total_price) }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="4"><strong>الإجمالي</strong></td>
+                    <td><strong>{{ "{:,.2f}".format(sale.total_amount) }} ر.ي</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="invoice-details" style="margin-top: 20px;">
+            <table>
+                <tr>
+                    <td>المبلغ المدفوع:</td>
+                    <td class="text-success">{{ "{:,.2f}".format(sale.paid_amount) }} ر.ي</td>
+                    <td>المبلغ المتبقي:</td>
+                    <td class="text-danger">{{ "{:,.2f}".format(sale.total_amount - sale.paid_amount) }} ر.ي</td>
+                </tr>
+                <tr>
+                    <td>حالة الفاتورة:</td>
+                    <td colspan="3">
+                        {% if sale.cash_status == 'approved' and sale.status == 'completed' %}
+                            <span class="status-paid">✓ مكتملة ومعتمدة</span>
+                        {% elif sale.cash_status == 'pending' %}
+                            <span class="status-pending">⏳ تنتظر موافقة الصندوق</span>
+                        {% elif sale.status == 'cancelled' %}
+                            <span class="status-pending">✗ ملغاة</span>
+                        {% else %}
+                            <span class="status-pending">⚠️ معلقة</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        {% if sale.notes %}
+        <div style="margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+            <strong>ملاحظات:</strong><br>
+            {{ sale.notes }}
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <p>شكراً لتعاملكم مع ثلاجة الصليف</p>
+            <p>هذا المستند صادر من نظام ثلاجة الصليف لإدارة التوزيع والمخزون</p>
+            <p>تم إنشاؤه بواسطة: {{ sale.creator.full_name if sale.creator else 'النظام' }}</p>
+        </div>
+    </div>
+</body>
+</html>

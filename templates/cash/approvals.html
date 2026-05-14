@@ -1,46 +1,131 @@
 <!-- templates/cash/approvals.html -->
 {% extends "base.html" %}
 
-{% block title %}الموافقات المالية{% endblock %}
+{% block title %}الموافقات المالية - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-header {
+        font-weight: bold;
+    }
+    .btn-action {
+        margin: 0 2px;
+    }
+    .amount-input {
+        width: 120px;
+        display: inline-block;
+        margin-left: 10px;
+    }
+    .pending-badge {
+        font-size: 12px;
+        padding: 3px 8px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="fade-in">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4><i class="fas fa-check-double"></i> الموافقات المالية</h4>
+        <div>
+            <h4 class="mb-1"><i class="fas fa-check-double text-primary"></i> الموافقات المالية</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('cash_index') }}">الصندوق</a></li>
+                    <li class="breadcrumb-item active">الموافقات</li>
+                </ol>
+            </nav>
+        </div>
         <a href="{{ url_for('cash_index') }}" class="btn btn-secondary btn-sm">
             <i class="fas fa-arrow-right"></i> رجوع للصندوق
         </a>
     </div>
 
+    <!-- إحصائيات سريعة -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h5 class="mb-0">{{ pending_purchases|length }}</h5>
+                    <small>مشتريات تنتظر الموافقة</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h5 class="mb-0">{{ pending_sales|length }}</h5>
+                    <small>مبيعات تنتظر الموافقة</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h5 class="mb-0">{{ pending_collections|length }}</h5>
+                    <small>تحصيلات تنتظر الموافقة</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- المشتريات المنتظرة -->
     <div class="card mb-4">
         <div class="card-header bg-warning">
-            <i class="fas fa-shopping-cart"></i> مشتريات تنتظر الموافقة ({{ pending_purchases|length }})
+            <i class="fas fa-shopping-cart"></i> مشتريات تنتظر الموافقة
+            <span class="badge bg-light text-dark">{{ pending_purchases|length }}</span>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>#</th><th>التاريخ</th><th>المورد</th><th>المبلغ</th><th>المدفوع</th><th>نوع الدفع</th><th>الإجراءات</th></tr>
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>التاريخ</th>
+                            <th>المورد</th>
+                            <th>المبلغ الإجمالي</th>
+                            <th>المدفوع</th>
+                            <th>المتبقي</th>
+                            <th>نوع الدفع</th>
+                            <th>الإجراءات</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for purchase in pending_purchases %}
                         <tr>
                             <td>{{ purchase.id }}</td>
                             <td>{{ purchase.order_date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ purchase.supplier.name }}</td>
+                            <td><strong>{{ purchase.supplier.name }}</strong></td>
                             <td>{{ "{:,.2f}".format(purchase.total_amount) }} ر.ي</td>
                             <td>{{ "{:,.2f}".format(purchase.paid_amount) }} ر.ي</td>
-                            <td>{% if purchase.payment_type == 'cash' %}نقدي{% else %}آجل{% endif %}</td>
                             <td>
-                                <button class="btn btn-sm btn-success" onclick="approveTransaction('purchase', {{ purchase.id }})">
-                                    <i class="fas fa-check"></i> موافقة
-                                </button>
-                                <button class="btn btn-sm btn-danger" onclick="rejectTransaction('purchase', {{ purchase.id }})">
-                                    <i class="fas fa-times"></i> رفض
-                                </button>
+                                {% set remaining = purchase.total_amount - purchase.paid_amount %}
+                                <span class="text-danger">{{ "{:,.2f}".format(remaining) }} ر.ي</span>
                              </td>
-                         </tr>
+                            <td>
+                                {% if purchase.payment_type == 'cash' %}
+                                    <span class="badge bg-success">نقدي</span>
+                                {% else %}
+                                    <span class="badge bg-warning">آجل</span>
+                                {% endif %}
+                             </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-success" onclick="showApproveModal('purchase', {{ purchase.id }}, {{ purchase.total_amount }})">
+                                        <i class="fas fa-check"></i> موافقة
+                                    </button>
+                                    <button class="btn btn-danger" onclick="showRejectModal('purchase', {{ purchase.id }})">
+                                        <i class="fas fa-times"></i> رفض
+                                    </button>
+                                </div>
+                             </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle"></i> لا توجد مشتريات تنتظر الموافقة
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -50,33 +135,61 @@
 
     <!-- المبيعات المنتظرة -->
     <div class="card mb-4">
-        <div class="card-header bg-info">
-            <i class="fas fa-chart-line"></i> مبيعات تنتظر الموافقة ({{ pending_sales|length }})
+        <div class="card-header bg-info text-white">
+            <i class="fas fa-chart-line"></i> مبيعات تنتظر الموافقة
+            <span class="badge bg-light text-dark">{{ pending_sales|length }}</span>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>#</th><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>المدفوع</th><th>نوع الدفع</th><th>الإجراءات</th></tr>
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>التاريخ</th>
+                            <th>العميل</th>
+                            <th>المبلغ الإجمالي</th>
+                            <th>المدفوع</th>
+                            <th>المتبقي</th>
+                            <th>نوع الدفع</th>
+                            <th>الإجراءات</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for sale in pending_sales %}
                         <tr>
                             <td>{{ sale.id }}</td>
                             <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ sale.customer.name }}</td>
+                            <td><strong>{{ sale.customer.name }}</strong></td>
                             <td>{{ "{:,.2f}".format(sale.total_amount) }} ر.ي</td>
                             <td>{{ "{:,.2f}".format(sale.paid_amount) }} ر.ي</td>
-                            <td>{% if sale.payment_type == 'cash' %}نقدي{% else %}آجل{% endif %}</td>
                             <td>
-                                <button class="btn btn-sm btn-success" onclick="approveTransaction('sale', {{ sale.id }})">
-                                    <i class="fas fa-check"></i> موافقة
-                                </button>
-                                <button class="btn btn-sm btn-danger" onclick="rejectTransaction('sale', {{ sale.id }})">
-                                    <i class="fas fa-times"></i> رفض
-                                </button>
+                                {% set remaining = sale.total_amount - sale.paid_amount %}
+                                <span class="text-danger">{{ "{:,.2f}".format(remaining) }} ر.ي</span>
                              </td>
-                         </tr>
+                            <td>
+                                {% if sale.payment_type == 'cash' %}
+                                    <span class="badge bg-success">نقدي</span>
+                                {% else %}
+                                    <span class="badge bg-warning">آجل</span>
+                                {% endif %}
+                             </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-success" onclick="showApproveModal('sale', {{ sale.id }}, {{ sale.total_amount }})">
+                                        <i class="fas fa-check"></i> موافقة
+                                    </button>
+                                    <button class="btn btn-danger" onclick="showRejectModal('sale', {{ sale.id }})">
+                                        <i class="fas fa-times"></i> رفض
+                                    </button>
+                                </div>
+                             </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle"></i> لا توجد مبيعات تنتظر الموافقة
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -86,32 +199,52 @@
 
     <!-- التحصيلات المنتظرة -->
     <div class="card mb-4">
-        <div class="card-header bg-success">
-            <i class="fas fa-hand-holding-usd"></i> تحصيلات تنتظر الموافقة ({{ pending_collections|length }})
+        <div class="card-header bg-success text-white">
+            <i class="fas fa-hand-holding-usd"></i> تحصيلات تنتظر الموافقة
+            <span class="badge bg-light text-dark">{{ pending_collections|length }}</span>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>#</th><th>التاريخ</th><th>العميل</th><th>المبلغ</th><th>المحصل</th><th>الإجراءات</th></tr>
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>التاريخ</th>
+                            <th>العميل</th>
+                            <th>رقم الهاتف</th>
+                            <th>المبلغ</th>
+                            <th>المحصل</th>
+                            <th>ملاحظات</th>
+                            <th>الإجراءات</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for collection in pending_collections %}
                         <tr>
                             <td>{{ collection.id }}</td>
                             <td>{{ collection.collection_date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ collection.customer.name }}</td>
+                            <td><strong>{{ collection.customer.name }}</strong></td>
+                            <td>{{ collection.customer.phone or '-' }}</td>
                             <td>{{ "{:,.2f}".format(collection.amount) }} ر.ي</td>
                             <td>{{ collection.collector.full_name }}</td>
+                            <td>{{ collection.notes or '-' }}</td>
                             <td>
-                                <button class="btn btn-sm btn-success" onclick="approveTransaction('collection', {{ collection.id }})">
-                                    <i class="fas fa-check"></i> موافقة
-                                </button>
-                                <button class="btn btn-sm btn-danger" onclick="rejectTransaction('collection', {{ collection.id }})">
-                                    <i class="fas fa-times"></i> رفض
-                                </button>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-success" onclick="showApproveModal('collection', {{ collection.id }}, {{ collection.amount }})">
+                                        <i class="fas fa-check"></i> موافقة
+                                    </button>
+                                    <button class="btn btn-danger" onclick="showRejectModal('collection', {{ collection.id }})">
+                                        <i class="fas fa-times"></i> رفض
+                                    </button>
+                                </div>
                              </td>
-                         </tr>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle"></i> لا توجد تحصيلات تنتظر الموافقة
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -125,13 +258,25 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">تأكيد الموافقة</h5>
+                <h5 class="modal-title"><i class="fas fa-check-circle"></i> تأكيد الموافقة</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="approveForm" method="POST">
                 <div class="modal-body">
-                    <p>هل أنت متأكد من الموافقة على هذه المعاملة؟</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span id="approveMessage">تأكيد الموافقة على هذه المعاملة</span>
+                    </div>
+
+                    <div class="mb-3" id="amountDiv" style="display: none;">
+                        <label class="form-label">المبلغ المراد صرفه (ر.ي)</label>
+                        <input type="number" name="cash_amount" id="cash_amount" class="form-control" step="0.01" required>
+                        <small class="form-text text-muted">يمكن تعديل المبلغ إذا كان هناك دفعة مقدمة</small>
+                    </div>
+
                     <input type="hidden" name="action" value="approve">
+                    <input type="hidden" name="type" id="transactionType">
+                    <input type="hidden" name="id" id="transactionId">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -147,16 +292,18 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">رفض المعاملة</h5>
+                <h5 class="modal-title"><i class="fas fa-ban"></i> رفض المعاملة</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="rejectForm" method="POST">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">سبب الرفض</label>
-                        <textarea name="reason" class="form-control" rows="3" required></textarea>
+                        <label class="form-label">سبب الرفض <span class="text-danger">*</span></label>
+                        <textarea name="reason" class="form-control" rows="3" required placeholder="اكتب سبب الرفض..."></textarea>
                     </div>
                     <input type="hidden" name="action" value="reject">
+                    <input type="hidden" name="type" id="rejectType">
+                    <input type="hidden" name="id" id="rejectId">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
@@ -168,16 +315,71 @@
 </div>
 
 <script>
-function approveTransaction(type, id) {
+function showApproveModal(type, id, totalAmount) {
+    const modal = new bootstrap.Modal(document.getElementById('approveModal'));
     const form = document.getElementById('approveForm');
+    const messageSpan = document.getElementById('approveMessage');
+    const amountDiv = document.getElementById('amountDiv');
+    const cashAmountInput = document.getElementById('cash_amount');
+
     form.action = `/cash/approve/${type}/${id}`;
-    new bootstrap.Modal(document.getElementById('approveModal')).show();
+    document.getElementById('transactionType').value = type;
+    document.getElementById('transactionId').value = id;
+
+    if (type === 'purchase') {
+        messageSpan.innerText = `تأكيد الموافقة على عملية الشراء رقم ${id}`;
+        // عرض حقل المبلغ للمشتريات الآجلة مع دفعة مقدمة
+        amountDiv.style.display = 'block';
+        cashAmountInput.value = totalAmount;
+        cashAmountInput.max = totalAmount;
+        cashAmountInput.placeholder = `أقصى مبلغ ${totalAmount} ريال`;
+    } else if (type === 'sale') {
+        messageSpan.innerText = `تأكيد الموافقة على عملية البيع رقم ${id}`;
+        amountDiv.style.display = 'none';
+    } else if (type === 'collection') {
+        messageSpan.innerText = `تأكيد الموافقة على عملية التحصيل رقم ${id}`;
+        amountDiv.style.display = 'none';
+    }
+
+    modal.show();
 }
 
-function rejectTransaction(type, id) {
+function showRejectModal(type, id) {
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
     const form = document.getElementById('rejectForm');
+
     form.action = `/cash/approve/${type}/${id}`;
-    new bootstrap.Modal(document.getElementById('rejectModal')).show();
+    document.getElementById('rejectType').value = type;
+    document.getElementById('rejectId').value = id;
+
+    modal.show();
 }
+
+// التحقق من صحة المبلغ
+document.getElementById('cash_amount')?.addEventListener('change', function() {
+    const max = parseFloat(this.max);
+    const value = parseFloat(this.value);
+    if (value > max) {
+        alert(`المبلغ المطلوب (${value}) يتجاوز الحد الأقصى (${max})`);
+        this.value = max;
+    }
+    if (value < 0) {
+        this.value = 0;
+    }
+});
 </script>
+
+<style media="print">
+    .btn, .btn-group, .modal, .no-print {
+        display: none !important;
+    }
+    .card {
+        border: 1px solid #ddd !important;
+        break-inside: avoid;
+    }
+    body {
+        padding: 20px !important;
+        background: white !important;
+    }
+</style>
 {% endblock %}
