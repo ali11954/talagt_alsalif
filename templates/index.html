@@ -194,7 +194,7 @@
                                 <tr>
                                     <td>{{ purchase.order_date.strftime('%Y-%m-%d') }}</td>
                                     <td>{{ purchase.supplier.name }}</td>
-                                    <td>{{ "{:,.2f}".format(purchase.total_amount) }} د.ع</td>
+                                    <td>{{ "{:,.2f}".format(purchase.total_amount) }} ر.ي</td>
                                 </tr>
                                 {% else %}
                                 <tr>
@@ -228,7 +228,7 @@
                                 <tr>
                                     <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
                                     <td>{{ sale.customer.name }}</td>
-                                    <td>{{ "{:,.2f}".format(sale.total_amount) }} د.ع</td>
+                                    <td>{{ "{:,.2f}".format(sale.total_amount) }} ر.ي</td>
                                 </tr>
                                 {% else %}
                                 <tr>
