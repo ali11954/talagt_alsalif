@@ -150,19 +150,6 @@ class Employee(db.Model):
     user = db.relationship('User', backref='employee_info', foreign_keys=[user_id])
 
 
-class Supplier(db.Model):
-    __tablename__ = 'suppliers'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    contact_person = db.Column(db.String(100))
-    phone = db.Column(db.String(20))
-    email = db.Column(db.String(100))
-    address = db.Column(db.String(200))
-    balance = db.Column(db.Float, default=0.0)
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -194,16 +181,35 @@ class PurchaseOrder(db.Model):
     notes = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
-    # حقول الموافقة المالية
     cash_status = db.Column(db.String(20), default='pending')
     cash_approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     cash_approved_at = db.Column(db.DateTime, nullable=True)
     cash_rejection_reason = db.Column(db.String(200), nullable=True)
 
+
     supplier = db.relationship('Supplier', backref='purchase_orders')
     creator = db.relationship('User', foreign_keys=[created_by], backref='created_purchases')
     cash_approver = db.relationship('User', foreign_keys=[cash_approved_by], backref='approved_purchases')
 
+
+
+    @property
+    def approved_payments_total(self):
+        return sum(
+            p.amount or 0
+            for p in self.supplier_payments
+            if p.cash_status == 'approved'
+        )
+
+    @property
+    def remaining_amount(self):
+        """حساب المبلغ المتبقي تلقائياً"""
+        return self.total_amount - self.paid_amount
+
+    @property
+    def cash_amount(self):
+        """المبلغ النقدي المطلوب (للشراء النقدي = الإجمالي)"""
+        return self.total_amount if self.payment_type == 'cash' else 0
 
 class PurchaseItem(db.Model):
     __tablename__ = 'purchase_items'
@@ -228,8 +234,30 @@ class Customer(db.Model):
     address = db.Column(db.String(200))
     balance = db.Column(db.Float, default=0.0)
     credit_limit = db.Column(db.Float, default=5000.0)
+    account_id = db.Column(db.Integer, db.ForeignKey('financial_accounts.id'), nullable=True)  # ✅ إضافة
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # العلاقات
+    account = db.relationship('FinancialAccount', foreign_keys=[account_id], backref='customer_account')
+
+
+class Supplier(db.Model):
+    __tablename__ = 'suppliers'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    contact_person = db.Column(db.String(100))
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(100))
+    address = db.Column(db.String(200))
+    balance = db.Column(db.Float, default=0.0)
+    is_active = db.Column(db.Boolean, default=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('financial_accounts.id'), nullable=True)  # ✅ إضافة
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # العلاقات
+    account = db.relationship('FinancialAccount', foreign_keys=[account_id], backref='supplier_account')
 
 class SaleOrder(db.Model):
     __tablename__ = 'sale_orders'
@@ -397,23 +425,64 @@ class Transaction(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     user = db.relationship('User', foreign_keys=[user_id], backref='transactions_list')
 
+
 class SupplierPayment(db.Model):
-    """سجل سداد الموردين"""
     __tablename__ = 'supplier_payments'
 
     id = db.Column(db.Integer, primary_key=True)
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False)
+    purchase_order_id = db.Column(db.Integer, db.ForeignKey('purchase_orders.id'), nullable=True)
     amount = db.Column(db.Float, nullable=False)
     payment_date = db.Column(db.DateTime, default=datetime.utcnow)
-    payment_type = db.Column(db.String(20), default='cash')  # cash, bank_transfer, check
-    reference_number = db.Column(db.String(100))  # رقم الإذن أو رقم الحوالة
+    payment_type = db.Column(db.String(20), default='cash')
+    reference_number = db.Column(db.String(100))
     notes = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    cash_status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    cash_status = db.Column(db.String(20), default='pending')
     cash_approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     cash_approved_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     supplier = db.relationship('Supplier', backref='payments')
+    purchase_order = db.relationship('PurchaseOrder', backref='supplier_payments')
     creator = db.relationship('User', foreign_keys=[created_by], backref='supplier_payments')
     cash_approver = db.relationship('User', foreign_keys=[cash_approved_by])
+
+class FinancialAccount(db.Model):
+    """الحسابات المالية"""
+    __tablename__ = 'financial_accounts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_code = db.Column(db.String(20), unique=True, nullable=False)  # كود الحساب
+    account_name = db.Column(db.String(100), nullable=False)  # اسم الحساب
+    account_type = db.Column(db.String(50), nullable=False)  # نوع الحساب: asset, liability, equity, revenue, expense
+    parent_id = db.Column(db.Integer, db.ForeignKey('financial_accounts.id'), nullable=True)  # الحساب الأب
+    balance = db.Column(db.Float, default=0.0)  # الرصيد الحالي
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # العلاقات
+    parent = db.relationship('FinancialAccount', remote_side=[id], backref='children')
+
+    def __repr__(self):
+        return f"<Account {self.account_code} - {self.account_name}>"
+
+
+class AccountTransaction(db.Model):
+    """حركات الحسابات المالية"""
+    __tablename__ = 'account_transactions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('financial_accounts.id'), nullable=False)
+    transaction_type = db.Column(db.String(20), nullable=False)  # debit, credit
+    amount = db.Column(db.Float, nullable=False)
+    reference_type = db.Column(db.String(50))  # sale, purchase, collection, payment, journal
+    reference_id = db.Column(db.Integer)
+    transaction_date = db.Column(db.DateTime, default=datetime.utcnow)
+    description = db.Column(db.String(200))
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # العلاقات
+    account = db.relationship('FinancialAccount', backref='transactions')
+    creator = db.relationship('User', foreign_keys=[created_by])

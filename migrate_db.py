@@ -1,129 +1,72 @@
 import sqlite3
-from datetime import datetime
 
-# مسار قاعدة البيانات المحلية
 DB_PATH = r'D:\ghith\alsalif\instance\thaljat_alsaleef.db'
 
 
-def update_customer_balance():
-    """تحديث رصيد العميل بناءً على الفاتورة رقم 1"""
+def fix_wrong_reference():
+    """تصحيح المرجع الخاطئ للقيد"""
     try:
         conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
         cur = conn.cursor()
 
-        print("=" * 60)
-        print("💰 تحديث رصيد العميل - مطعم الرشيد")
-        print("=" * 60)
+        print("=" * 80)
+        print("🔧 تصحيح المرجع الخاطئ للقيد")
+        print("=" * 80)
 
-        # 1. جلب معلومات الفاتورة
-        print("\n📋 1. جلب معلومات الفاتورة...")
+        # البحث عن القيد
         cur.execute("""
-            SELECT id, customer_id, total_amount, paid_amount, payment_type, status
-            FROM sale_orders 
-            WHERE id = 1
+            SELECT id, reference_number, description, total_debit
+            FROM journal_entries
+            WHERE reference_number = 'PAY-20260514-003'
         """)
-        sale = cur.fetchone()
 
-        if sale:
-            print(f"   ✅ الفاتورة رقم 1:")
-            print(f"      - المبلغ الإجمالي: {sale['total_amount']:,.2f} ريال")
-            print(f"      - المدفوع: {sale['paid_amount']:,.2f} ريال")
-            print(f"      - المتبقي: {sale['total_amount'] - sale['paid_amount']:,.2f} ريال")
+        entry = cur.fetchone()
 
-            remaining = sale['total_amount'] - sale['paid_amount']
-            customer_id = sale['customer_id']
+        if entry:
+            entry_id, old_ref, description, amount = entry
+            print(f"\n📋 القيد الحالي:")
+            print(f"   ID: {entry_id}")
+            print(f"   رقم الإذن: {old_ref}")
+            print(f"   البيان: {description}")
+            print(f"   المبلغ: {amount:,.2f} ريال")
 
-            # 2. تحديث رصيد العميل مباشرة
-            print(f"\n💰 2. تحديث رصيد العميل...")
+            # تغيير رقم الإذن إلى COL بدلاً من PAY
+            new_ref = old_ref.replace('PAY', 'COL')
+
             cur.execute("""
-                UPDATE customers 
-                SET balance = ?,
-                    credit_limit = 50000
+                UPDATE journal_entries 
+                SET reference_number = ?
                 WHERE id = ?
-            """, (remaining, customer_id))
+            """, (new_ref, entry_id))
 
-            print(f"   ✅ تم تحديث رصيد العميل إلى {remaining:,.2f} ريال")
-
-            # 3. التحقق من التحديث
-            cur.execute("""
-                SELECT id, name, balance, phone, credit_limit 
-                FROM customers 
-                WHERE id = ?
-            """, (customer_id,))
-            customer = cur.fetchone()
-
-            print(f"\n📊 3. بيانات العميل بعد التحديث:")
-            print(f"   👤 اسم العميل: {customer['name']}")
-            print(f"   💰 المديونية: {customer['balance']:,.2f} ريال")
-            print(f"   📞 الهاتف: {customer['phone']}")
-            print(f"   💳 الحد الائتماني: {customer['credit_limit']:,.2f} ريال")
-
-            # 4. التأكد من أن الفاتورة مكتملة
-            print(f"\n✅ 4. التأكد من حالة الفاتورة...")
-            cur.execute("""
-                UPDATE sale_orders 
-                SET status = 'completed',
-                    cash_status = 'approved'
-                WHERE id = 1
-            """)
-            print(f"   ✅ الفاتورة مكتملة ومعتمدة")
+            print(f"\n✅ تم تغيير رقم الإذن إلى: {new_ref}")
 
             conn.commit()
-
-            print("\n" + "=" * 60)
-            print("🎉 تم تحديث رصيد العميل بنجاح!")
-            print("⚠️ الآن أعد تشغيل التطبيق المحلي وافتح صفحة التحصيل")
-            print("=" * 60)
-
         else:
-            print("   ❌ الفاتورة رقم 1 غير موجودة!")
+            print("\n   ⚠️ لم يتم العثور على القيد")
+
+        # عرض الإحصائيات بعد التصحيح
+        print("\n📊 الإحصائيات بعد التصحيح:")
+
+        cur.execute("SELECT COUNT(*), SUM(total_debit) FROM journal_entries WHERE reference_number LIKE 'PAY-%'")
+        pay_count, pay_total = cur.fetchone()
+        pay_total = pay_total or 0
+
+        cur.execute("SELECT COUNT(*), SUM(total_debit) FROM journal_entries WHERE reference_number LIKE 'COL-%'")
+        col_count, col_total = cur.fetchone()
+        col_total = col_total or 0
+
+        print(f"\n   💰 قيود PAY (مدفوعات موردين): {pay_count} قيد - {pay_total:,.2f} ريال")
+        print(f"   💰 قيود COL (تحصيلات): {col_count} قيد - {col_total:,.2f} ريال")
 
         conn.close()
 
-    except Exception as e:
-        print(f"❌ خطأ: {e}")
-        import traceback
-        traceback.print_exc()
-
-
-def show_all_debtors():
-    """عرض جميع العملاء المدينين"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-
-        print("\n" + "=" * 60)
-        print("📋 قائمة العملاء المدينين بعد التحديث")
-        print("=" * 60)
-
-        cur.execute("""
-            SELECT id, name, balance, phone, credit_limit
-            FROM customers 
-            WHERE balance > 0
-            ORDER BY balance DESC
-        """)
-
-        debtors = cur.fetchall()
-
-        if debtors:
-            for debtor in debtors:
-                print(f"\n   🏪 {debtor['name']}")
-                print(f"      💰 المديونية: {debtor['balance']:,.2f} ريال")
-                print(f"      📞 الهاتف: {debtor['phone'] or '-'}")
-        else:
-            print("\n   ⚠️ لا يوجد عملاء مدينين")
-
-        conn.close()
+        print("\n" + "=" * 80)
+        print("🎉 تم تصحيح المرجع بنجاح!")
 
     except Exception as e:
         print(f"❌ خطأ: {e}")
 
 
 if __name__ == "__main__":
-    # تحديث الرصيد
-    update_customer_balance()
-
-    # عرض النتيجة
-    show_all_debtors()
+    fix_wrong_reference()

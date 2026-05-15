@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}الحسابات المالية{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1"><i class="fas fa-chart-line text-primary"></i> الحسابات المالية</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item active">الحسابات</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- الميزانية -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h5>إجمالي الأصول</h5>
+                    <h3>{{ "{:,.2f}".format(total_assets) }} ر.ي</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h5>إجمالي الخصوم</h5>
+                    <h3>{{ "{:,.2f}".format(total_liabilities) }} ر.ي</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- قائمة الحسابات -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <i class="fas fa-list"></i> دليل الحسابات
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>كود الحساب</th>
+                            <th>اسم الحساب</th>
+                            <th>النوع</th>
+                            <th>الرصيد الحالي</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in accounts %}
+                        <tr>
+                            <td><strong>{{ account.account_code }}</strong></td>
+                            <td>{{ account.account_name }}</td>
+                            <td>
+                                {% if account.account_type == 'asset' %}
+                                    <span class="badge bg-success">أصل</span>
+                                {% elif account.account_type == 'liability' %}
+                                    <span class="badge bg-danger">خصم</span>
+                                {% elif account.account_type == 'equity' %}
+                                    <span class="badge bg-info">حقوق ملكية</span>
+                                {% elif account.account_type == 'revenue' %}
+                                    <span class="badge bg-primary">إيراد</span>
+                                {% else %}
+                                    <span class="badge bg-warning">مصروف</span>
+                                {% endif %}
+                            </td>
+                            <td class="{% if account.account_type in ['asset', 'expense'] %}text-danger{% else %}text-success{% endif %} fw-bold">
+                                {{ "{:,.2f}".format(account.balance) }} ر.ي
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

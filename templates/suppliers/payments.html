@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}سداد الموردين{% endblock %}
+{% block title %}سداد الموردين - ثلاجة الصليف{% endblock %}
 
 {% block content %}
 <div class="fade-in">
@@ -71,6 +71,24 @@
                             </select>
                         </div>
 
+                        <!-- ✅ حقل فاتورة الشراء (اختياري) -->
+                        <div class="mb-3">
+                            <label class="form-label">فاتورة الشراء</label>
+                            <select name="purchase_order_id" class="form-select" id="purchaseOrderSelect">
+                                <option value="">اختر الفاتورة (اختياري)</option>
+                                {% for supplier in suppliers %}
+                                    {% for po in supplier.purchase_orders %}
+                                        {% if po.total_amount > po.paid_amount %}
+                                        <option value="{{ po.id }}" data-supplier="{{ supplier.id }}" data-remaining="{{ po.total_amount - po.paid_amount }}">
+                                            فاتورة #{{ po.id }} - {{ supplier.name }} - المتبقي: {{ "{:,.2f}".format(po.total_amount - po.paid_amount) }} ر.ي
+                                        </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">اختر الفاتورة المستحقة لتحديث المدفوعات تلقائياً</small>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">المبلغ (ر.ي) *</label>
                             <input type="number" step="0.01" name="amount" id="amount" class="form-control" required>
@@ -121,6 +139,7 @@
                                     <th>جهة الاتصال</th>
                                     <th>رقم الهاتف</th>
                                     <th>المديونية</th>
+                                    <th>الفواتير المفتوحة</th>
                                     <th>الإجراءات</th>
                                 </tr>
                             </thead>
@@ -133,21 +152,31 @@
                                     <td>{{ supplier.phone or '-' }}</td>
                                     <td class="text-danger fw-bold">{{ "{:,.2f}".format(supplier.balance) }} ر.ي</td>
                                     <td>
+    {% if supplier.open_invoices %}
+        <span class="badge bg-info">{{ supplier.open_invoices_count }} فاتورة</span>
+        {% for po in supplier.open_invoices[:2] %}
+            <small class="d-block">فاتورة #{{ po.id }}: {{ "{:,.2f}".format(po.total_amount - po.paid_amount) }} ر.ي</small>
+        {% endfor %}
+    {% else %}
+        <span class="badge bg-secondary">لا توجد فواتير</span>
+    {% endif %}
+</td>
+                                    <td>
                                         <button class="btn btn-sm btn-success" onclick="quickPay({{ supplier.id }}, '{{ supplier.name }}', {{ supplier.balance }})">
                                             <i class="fas fa-money-bill"></i> سداد
                                         </button>
                                     </td>
-                                </tr>
+                                 </tr>
                                 {% endfor %}
                             </tbody>
                             <tfoot class="table-active">
                                 <tr>
-                                    <td colspan="4" class="text-end"><strong>الإجمالي:</strong></td>
+                                    <td colspan="5" class="text-end"><strong>الإجمالي:</strong></td>
                                     <td class="text-danger"><strong>{{ "{:,.2f}".format(suppliers|sum(attribute='balance')) }} ر.ي</strong></td>
                                     <td></td>
-                                </tr>
+                                 </tr>
                             </tfoot>
-                        </table>
+                         </table>
                     </div>
                 </div>
             </div>
@@ -167,6 +196,7 @@
                             <th>#</th>
                             <th>التاريخ</th>
                             <th>المورد</th>
+                            <th>الفاتورة</th>
                             <th>المبلغ</th>
                             <th>طريقة الدفع</th>
                             <th>رقم المرجع</th>
@@ -181,6 +211,15 @@
                             <td>{{ payment.id }}</td>
                             <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>{{ payment.supplier.name }}</td>
+                            <td>
+                                {% if payment.purchase_order_id %}
+                                    <a href="{{ url_for('purchases') }}?page=1#{{ payment.purchase_order_id }}" class="badge bg-primary">
+                                        فاتورة #{{ payment.purchase_order_id }}
+                                    </a>
+                                {% else %}
+                                    <span class="badge bg-secondary">غير مرتبطة</span>
+                                {% endif %}
+                            </td>
                             <td>{{ "{:,.2f}".format(payment.amount) }} ر.ي</td>
                             <td>
                                 {% if payment.payment_type == 'cash' %}
@@ -190,7 +229,7 @@
                                 {% else %}
                                     <span class="badge bg-warning">شيك</span>
                                 {% endif %}
-                             </td>
+                            </td>
                             <td>{{ payment.reference_number or '-' }}</td>
                             <td>
                                 {% if payment.cash_status == 'approved' %}
@@ -200,7 +239,7 @@
                                 {% else %}
                                     <span class="badge bg-danger">مرفوضة</span>
                                 {% endif %}
-                             </td>
+                            </td>
                             <td>{{ payment.notes or '-' }}</td>
                             <td>
                                 {% if payment.cash_status == 'pending' and current_user.role == 'admin' %}
@@ -215,7 +254,7 @@
                                     </button>
                                 </div>
                                 {% endif %}
-                             </td>
+                            </td>
                          </tr>
 
                         <!-- مودال رفض الدفعة -->
@@ -243,7 +282,7 @@
                         </div>
                         {% endfor %}
                     </tbody>
-                </table>
+                 </table>
             </div>
         </div>
     </div>
@@ -251,6 +290,7 @@
 
 <script>
     const supplierSelect = document.getElementById('supplierSelect');
+    const purchaseOrderSelect = document.getElementById('purchaseOrderSelect');
     const amountInput = document.getElementById('amount');
     const balanceInfo = document.getElementById('balanceInfo');
 
@@ -262,7 +302,27 @@
         document.querySelector('.col-md-5 .card').scrollIntoView({ behavior: 'smooth' });
     }
 
+    // تحديث قائمة الفواتير عند اختيار المورد
     supplierSelect.addEventListener('change', function() {
+        const selectedSupplierId = this.value;
+        const options = purchaseOrderSelect.options;
+
+        // إخفاء جميع الخيارات أولاً
+        for (let i = 0; i < options.length; i++) {
+            const option = options[i];
+            if (option.value === '') {
+                option.style.display = '';
+                continue;
+            }
+            const supplierId = option.getAttribute('data-supplier');
+            if (supplierId === selectedSupplierId) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+
+        // تحديث معلومات المديونية
         const selectedOption = this.options[this.selectedIndex];
         const balance = selectedOption.getAttribute('data-balance');
         if (balance) {
@@ -273,13 +333,37 @@
         }
     });
 
+    // تحديث الحد الأقصى عند اختيار فاتورة
+    purchaseOrderSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const remaining = selectedOption.getAttribute('data-remaining');
+        if (remaining) {
+            const currentMax = parseFloat(amountInput.max);
+            const newMax = parseFloat(remaining);
+            if (newMax < currentMax) {
+                amountInput.max = newMax;
+                balanceInfo.innerHTML = `الحد الأقصى للدفع (بناءً على الفاتورة): ${newMax.toFixed(2)} ر.ي`;
+            }
+        }
+    });
+
     amountInput.addEventListener('change', function() {
         const max = parseFloat(this.max);
         const value = parseFloat(this.value);
-        if (value > max) {
-            alert(`المبلغ المطلوب (${value}) يتجاوز المديونية (${max})`);
+        if (value > max && max > 0) {
+            alert(`المبلغ المطلوب (${value}) يتجاوز الحد الأقصى (${max})`);
             this.value = max;
         }
     });
 </script>
+
+<style>
+    .badge a {
+        color: white;
+        text-decoration: none;
+    }
+    .badge a:hover {
+        text-decoration: underline;
+    }
+</style>
 {% endblock %}

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+            direction: rtl;
+            unicode-bidi: embed;
+            font-size: 12px;
+            margin: 0;
+            color: #222;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 18px;
+        }
+
+        .header h2 {
+            margin: 0 0 5px 0;
+        }
+
+        .filters {
+            margin-bottom: 15px;
+            font-size: 11px;
+            background: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #ddd;
+            line-height: 1.8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #2c3e50;
+            color: #fff;
+        }
+
+        .debit {
+            color: green;
+            font-weight: bold;
+        }
+
+        .credit {
+            color: red;
+            font-weight: bold;
+        }
+
+        .summary {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .right {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2>تقرير قيود اليومية</h2>
+    <div>ثلاجة الصليف</div>
+</div>
+
+<div class="filters">
+    <div><strong>من تاريخ:</strong> {{ from_date or '---' }}</div>
+    <div><strong>إلى تاريخ:</strong> {{ to_date or '---' }}</div>
+    <div><strong>اسم الحساب:</strong> {{ account_name or '---' }}</div>
+    <div><strong>رقم الحساب:</strong> {{ account_code or '---' }}</div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>التاريخ</th>
+            <th>رقم الإذن</th>
+            <th>البيان</th>
+            <th>مدين</th>
+            <th>دائن</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for entry in entries %}
+        <tr>
+            <td>{{ entry.id }}</td>
+            <td>{{ entry.entry_date.strftime('%Y-%m-%d %H:%M') if entry.entry_date else '' }}</td>
+            <td>{{ entry.reference_number }}</td>
+            <td class="right">{{ entry.description }}</td>
+            <td class="debit">{{ "{:,.2f}".format(entry.total_debit or 0) }}</td>
+            <td class="credit">{{ "{:,.2f}".format(entry.total_credit or 0) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="summary">
+    إجمالي القيود: {{ entries|length }}
+</div>
+
+</body>
+</html>

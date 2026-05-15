@@ -1,330 +1,708 @@
 {% extends "base.html" %}
 
-{% block title %}المشتريات{% endblock %}
+{% block title %}المشتريات - ثلاجة الصليف{% endblock %}
 
 {% block content %}
+
 <div class="fade-in">
+
+    <!-- ============================ -->
+    <!-- رأس الصفحة -->
+    <!-- ============================ -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-shopping-cart"></i> إدارة المشتريات</h2>
+
         <div>
-            <button onclick="window.print()" class="btn btn-secondary ml-2">
-                <i class="fas fa-print"></i> طباعة
+            <h4 class="mb-1">
+                <i class="fas fa-shopping-cart text-primary"></i>
+                إدارة المشتريات
+            </h4>
+
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('dashboard') }}">
+                            الرئيسية
+                        </a>
+                    </li>
+
+                    <li class="breadcrumb-item active">
+                        المشتريات
+                    </li>
+                </ol>
+            </nav>
+        </div>
+
+        <div class="d-flex gap-2">
+
+            <button onclick="window.print()"
+                    class="btn btn-secondary btn-sm">
+
+                <i class="fas fa-print"></i>
+                طباعة
             </button>
-            <a href="{{ url_for('add_purchase') }}" class="btn-gradient">
-                <i class="fas fa-plus"></i> عملية شراء جديدة
+
+            <a href="{{ url_for('add_purchase') }}"
+               class="btn btn-primary btn-sm">
+
+                <i class="fas fa-plus"></i>
+                عملية شراء جديدة
             </a>
+
         </div>
+
     </div>
 
+    <!-- ============================ -->
     <!-- بطاقات الإحصائيات -->
+    <!-- ============================ -->
     <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h5 class="card-title">إجمالي المشتريات</h5>
-                    <h3>{{ "{:,.2f}".format(purchases|sum(attribute='total_amount')) }} ر.ي</h3>
+
+        <div class="col-md-3 mb-3">
+            <div class="card bg-primary text-white shadow-sm">
+
+                <div class="card-body text-center">
+
+                    <h5 class="mb-1">
+                        {{ "{:,.2f}".format(total_amount or 0) }}
+                        ر.ي
+                    </h5>
+
+                    <small>
+                        إجمالي المشتريات
+                    </small>
+
                 </div>
+
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h5 class="card-title">المدفوع</h5>
-                    <h3>{{ "{:,.2f}".format(purchases|sum(attribute='paid_amount')) }} ر.ي</h3>
+
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white shadow-sm">
+
+                <div class="card-body text-center">
+
+                    <h5 class="mb-1">
+                        {{ "{:,.2f}".format(total_paid or 0) }}
+                        ر.ي
+                    </h5>
+
+                    <small>
+                        المدفوع
+                    </small>
+
                 </div>
+
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <h5 class="card-title">المتبقي</h5>
-                    <h3>{{ "{:,.2f}".format(purchases|sum(attribute='total_amount') - purchases|sum(attribute='paid_amount')) }} ر.ي</h3>
+
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white shadow-sm">
+
+                <div class="card-body text-center">
+
+                    <h5 class="mb-1">
+                        {{ "{:,.2f}".format((total_amount or 0) - (total_paid or 0)) }}
+                        ر.ي
+                    </h5>
+
+                    <small>
+                        المتبقي
+                    </small>
+
                 </div>
+
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <h5 class="card-title">عدد الفواتير</h5>
-                    <h3>{{ purchases|length }}</h3>
+
+        <div class="col-md-3 mb-3">
+            <div class="card bg-info text-white shadow-sm">
+
+                <div class="card-body text-center">
+
+                    <h5 class="mb-1">
+                        {{ total_count or 0 }}
+                    </h5>
+
+                    <small>
+                        عدد الفواتير
+                    </small>
+
                 </div>
+
             </div>
         </div>
+
     </div>
 
-    <div class="card">
+    <!-- ============================ -->
+    <!-- جدول المشتريات -->
+    <!-- ============================ -->
+    <div class="card shadow-sm">
+
+        <!-- فلترة -->
         <div class="card-header bg-white">
-            <div class="row">
+
+            <div class="row g-2">
+
                 <div class="col-md-4">
-                    <input type="text" id="searchInput" class="form-control" placeholder="بحث برقم الفاتورة أو المورد...">
+
+                    <input type="text"
+                           id="searchInput"
+                           class="form-control"
+                           placeholder="بحث برقم الفاتورة أو المورد...">
+
                 </div>
+
                 <div class="col-md-3">
-                    <select id="statusFilter" class="form-control">
-                        <option value="">جميع الحالات</option>
-                        <option value="completed">مكتملة</option>
-                        <option value="pending">معلقة</option>
-                        <option value="cancelled">ملغاة</option>
+
+                    <select id="statusFilter"
+                            class="form-control">
+
+                        <option value="">
+                            جميع الحالات
+                        </option>
+
+                        <option value="completed">
+                            مكتملة
+                        </option>
+
+                        <option value="pending">
+                            معلقة
+                        </option>
+
+                        <option value="cancelled">
+                            ملغاة
+                        </option>
+
                     </select>
+
                 </div>
+
                 <div class="col-md-3">
-                    <select id="paymentFilter" class="form-control">
-                        <option value="">جميع أنواع الدفع</option>
-                        <option value="cash">نقدي</option>
-                        <option value="credit">آجل</option>
+
+                    <select id="paymentFilter"
+                            class="form-control">
+
+                        <option value="">
+                            جميع أنواع الدفع
+                        </option>
+
+                        <option value="cash">
+                            نقدي
+                        </option>
+
+                        <option value="credit">
+                            آجل
+                        </option>
+
                     </select>
+
                 </div>
+
                 <div class="col-md-2">
-                    <button id="resetFilters" class="btn btn-secondary w-100">
-                        <i class="fas fa-undo"></i> إعادة تعيين
+
+                    <button id="resetFilters"
+                            class="btn btn-secondary w-100">
+
+                        <i class="fas fa-undo"></i>
+                        إعادة تعيين
+
                     </button>
+
                 </div>
+
             </div>
+
         </div>
-        <div class="card-body">
+
+        <!-- الجدول -->
+        <div class="card-body p-0">
+
             <div class="table-responsive">
-                <table class="table table-hover" id="purchasesTable">
-                    <thead>
+
+                <table class="table table-hover align-middle mb-0"
+                       id="purchasesTable">
+
+                    <thead class="table-light">
+
                         <tr>
+
                             <th>#</th>
                             <th>رقم العملية</th>
                             <th>التاريخ</th>
                             <th>المورد</th>
-                            <th>المبلغ الإجمالي</th>
+                            <th>الإجمالي</th>
                             <th>المدفوع</th>
                             <th>المتبقي</th>
                             <th>نوع الدفع</th>
                             <th>حالة الصندوق</th>
                             <th>الحالة</th>
-                            <th>الإجراءات</th>
+                            <th width="220">الإجراءات</th>
+
                         </tr>
+
                     </thead>
+
                     <tbody>
-                        {% for purchase in purchases %}
-                        <tr data-status="{{ purchase.status }}" data-payment="{{ purchase.payment_type }}">
-                            <td>{{ loop.index }}</td>
-                            <td>{{ purchase.id }}</td>
-                            <td>{{ purchase.order_date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ purchase.supplier.name }}</td>
-                            <td>{{ "{:,.2f}".format(purchase.total_amount) }} ر.ي</td>
-                            <td>{{ "{:,.2f}".format(purchase.paid_amount) }} ر.ي</td>
-                            <td>
-                                {% set remaining = purchase.total_amount - purchase.paid_amount %}
-                                {% if remaining > 0 %}
-                                    <span class="text-danger">{{ "{:,.2f}".format(remaining) }} ر.ي</span>
-                                {% else %}
-                                    <span class="text-success">{{ "{:,.2f}".format(remaining) }} ر.ي</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if purchase.payment_type == 'cash' %}
-                                    <span class="badge bg-success">نقدي</span>
-                                {% else %}
-                                    <span class="badge bg-warning">آجل</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if purchase.cash_status == 'approved' %}
-                                    <span class="badge bg-success">موافق عليها</span>
-                                {% elif purchase.cash_status == 'pending' %}
-                                    <span class="badge bg-warning">تنتظر الموافقة</span>
-                                {% else %}
-                                    <span class="badge bg-danger">مرفوضة</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if purchase.status == 'completed' %}
-                                    <span class="badge bg-success">مكتملة</span>
-                                {% elif purchase.status == 'cancelled' %}
-                                    <span class="badge bg-danger">ملغاة</span>
-                                {% else %}
-                                    <span class="badge bg-warning">معلقة</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewModal{{ purchase.id }}">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
 
-                                    {% if purchase.status != 'completed' and purchase.cash_status != 'approved' and purchase.status != 'cancelled' %}
-                                        <a href="{{ url_for('edit_purchase', id=purchase.id) }}" class="btn btn-sm btn-warning">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ purchase.id }}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                        {% if purchase.cash_status == 'pending' and purchase.payment_type == 'cash' %}
-                                        <form method="POST" action="{{ url_for('approve_purchase_direct', id=purchase.id) }}" style="display:inline;">
-                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('هل تريد الموافقة على هذه العملية؟')">
-                                                <i class="fas fa-check"></i>
-                                            </button>
-                                        </form>
+                        {% if purchases and purchases.items %}
+
+                            {% for purchase in purchases.items %}
+
+                              {% set paid_amount = purchase.paid_amount or 0 %}
+                                {% set remaining = purchase.total_amount - paid_amount %}
+
+                                <tr data-status="{{ purchase.status }}"
+                                    data-payment="{{ purchase.payment_type }}">
+
+                                    <td>
+                                        {{ loop.index + ((purchases.page - 1) * purchases.per_page) }}
+                                    </td>
+
+                                    <td>
+                                        {{ purchase.id }}
+                                    </td>
+
+                                    <td>
+                                        {{ purchase.order_date.strftime('%Y-%m-%d') }}
+                                    </td>
+
+                                    <td>
+                                        {{ purchase.supplier.name }}
+                                    </td>
+
+                                    <td class="fw-bold text-primary">
+
+                                        {{ "{:,.2f}".format(purchase.total_amount) }}
+                                        ر.ي
+
+                                    </td>
+
+                                    <td class="fw-bold text-success">
+
+                                        {{ "{:,.2f}".format(paid_amount) }}
+                                        ر.ي
+
+                                    </td>
+
+                                    <td class="{% if remaining > 0 %}text-danger{% else %}text-success{% endif %} fw-bold">
+
+                                        {{ "{:,.2f}".format(remaining) }}
+                                        ر.ي
+
+                                    </td>
+
+                                    <!-- نوع الدفع -->
+                                    <td>
+
+                                        {% if purchase.payment_type == 'cash' %}
+
+                                            <span class="badge bg-success">
+                                                نقدي
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="badge bg-warning text-dark">
+                                                آجل
+                                            </span>
+
                                         {% endif %}
-                                    {% endif %}
 
-                                    {% if purchase.cash_status == 'pending' and purchase.payment_type == 'cash' and purchase.status != 'cancelled' %}
-                                    <form method="POST" action="{{ url_for('approve_purchase_direct', id=purchase.id) }}" style="display:inline;">
-                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('هل تريد الموافقة على هذه العملية؟')">
-                                            <i class="fas fa-check-circle"></i> موافقة
-                                        </button>
-                                    </form>
-                                    {% endif %}
+                                    </td>
 
-                                    <a href="{{ url_for('print_purchase', id=purchase.id) }}" class="btn btn-sm btn-secondary" target="_blank">
-                                        <i class="fas fa-print"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
+                                    <!-- حالة الصندوق -->
+                                    <td>
 
-                        <!-- مودال عرض التفاصيل -->
-                        <div class="modal fade" id="viewModal{{ purchase.id }}" tabindex="-1">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-primary text-white">
-                                        <h5 class="modal-title">تفاصيل عملية الشراء #{{ purchase.id }}</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <strong>التاريخ:</strong> {{ purchase.order_date.strftime('%Y-%m-%d %H:%M') }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <strong>المورد:</strong> {{ purchase.supplier.name }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <strong>نوع الدفع:</strong> {{ 'نقدي' if purchase.payment_type == 'cash' else 'آجل' }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <strong>الحالة:</strong> {{ 'مكتملة' if purchase.status == 'completed' else 'معلقة' }}
-                                            </div>
+                                        {% if purchase.cash_status == 'approved' %}
+
+                                            <span class="badge bg-success">
+                                                موافق عليها
+                                            </span>
+
+                                        {% elif purchase.cash_status == 'pending' %}
+
+                                            <span class="badge bg-warning text-dark">
+                                                تنتظر الموافقة
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="badge bg-danger">
+                                                مرفوضة
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
+
+                                    <!-- حالة العملية -->
+                                    <td>
+
+                                        {% if purchase.status == 'completed' %}
+
+                                            <span class="badge bg-success">
+                                                مكتملة
+                                            </span>
+
+                                        {% elif purchase.status == 'cancelled' %}
+
+                                            <span class="badge bg-danger">
+                                                ملغاة
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="badge bg-warning text-dark">
+                                                معلقة
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
+
+                                    <!-- الإجراءات -->
+                                    <td>
+
+                                        <div class="btn-group btn-group-sm">
+
+                                            <!-- عرض -->
+                                            <button type="button"
+                                                    class="btn btn-info"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#viewModal{{ purchase.id }}"
+                                                    title="عرض">
+
+                                                <i class="fas fa-eye"></i>
+
+                                            </button>
+
+                                            <!-- تسديد -->
+                                            {% if remaining > 0 %}
+
+                                            <a href="{{ url_for('supplier_payments') }}?supplier_id={{ purchase.supplier_id }}&purchase_id={{ purchase.id }}"
+                                               class="btn btn-success"
+                                               title="تسديد المورد">
+
+                                                <i class="fas fa-money-bill-wave"></i>
+
+                                            </a>
+
+                                            {% endif %}
+
+                                            <!-- تعديل -->
+                                            {% if purchase.status != 'completed'
+                                                  and purchase.cash_status != 'approved'
+                                                  and purchase.status != 'cancelled' %}
+
+                                            <a href="{{ url_for('edit_purchase', id=purchase.id) }}"
+                                               class="btn btn-warning"
+                                               title="تعديل">
+
+                                                <i class="fas fa-edit"></i>
+
+                                            </a>
+
+                                            <!-- حذف -->
+                                            <button type="button"
+                                                    class="btn btn-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteModal{{ purchase.id }}"
+                                                    title="حذف">
+
+                                                <i class="fas fa-trash"></i>
+
+                                            </button>
+
+                                            {% endif %}
+
+                                            <!-- موافقة -->
+                                            {% if purchase.cash_status == 'pending'
+                                                  and purchase.payment_type == 'cash' %}
+
+                                            <form method="POST"
+                                                  action="{{ url_for('approve_purchase_direct', id=purchase.id) }}"
+                                                  style="display:inline;">
+
+                                                <button type="submit"
+                                                        class="btn btn-success"
+                                                        title="موافقة"
+                                                        onclick="return confirm('هل تريد الموافقة على العملية؟')">
+
+                                                    <i class="fas fa-check"></i>
+
+                                                </button>
+
+                                            </form>
+
+                                            {% endif %}
+
+                                            <!-- طباعة -->
+                                            <a href="{{ url_for('print_purchase', id=purchase.id) }}"
+                                               class="btn btn-secondary"
+                                               target="_blank"
+                                               title="طباعة">
+
+                                                <i class="fas fa-print"></i>
+
+                                            </a>
+
                                         </div>
 
-                                        <h6>المنتجات:</h6>
-                                        <table class="table table-sm">
-                                            <thead>
-                                                <tr>
-                                                    <th>المنتج</th>
-                                                    <th>الكمية</th>
-                                                    <th>سعر الوحدة</th>
-                                                    <th>الإجمالي</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for item in purchase.items %}
-                                                <tr>
-                                                    <td>{{ item.product.name }}</td>
-                                                    <td>{{ item.quantity }}</td>
-                                                    <td>{{ "{:,.2f}".format(item.unit_price) }} ر.ي</td>
-                                                    <td>{{ "{:,.2f}".format(item.total_price) }} ر.ي</td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                            <tfoot>
-                                                <tr>
-                                                    <th colspan="3">الإجمالي</th>
-                                                    <th>{{ "{:,.2f}".format(purchase.total_amount) }} ر.ي</th>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                                        <a href="{{ url_for('print_purchase', id=purchase.id) }}" class="btn btn-primary" target="_blank">
-                                            <i class="fas fa-print"></i> طباعة
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                                    </td>
 
-                        <!-- مودال تأكيد الحذف -->
-                        <div class="modal fade" id="deleteModal{{ purchase.id }}" tabindex="-1">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-danger text-white">
-                                        <h5 class="modal-title">تأكيد الحذف</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p>هل أنت متأكد من حذف عملية الشراء رقم <strong>{{ purchase.id }}</strong>؟</p>
-                                        <p class="text-danger">تنبيه: هذا الإجراء لا يمكن التراجع عنه!</p>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                        <a href="{{ url_for('delete_purchase', id=purchase.id) }}" class="btn btn-danger">حذف</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+                                </tr>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                            <tr>
+
+                                <td colspan="11"
+                                    class="text-center text-muted py-5">
+
+                                    <i class="fas fa-box-open fa-2x mb-3 d-block"></i>
+
+                                    لا توجد مشتريات لعرضها
+
+                                </td>
+
+                            </tr>
+
+                        {% endif %}
+
                     </tbody>
+
+                    <!-- الإجماليات -->
+                    <tfoot class="table-active">
+
+                        <tr>
+
+                            <td colspan="4"
+                                class="text-end fw-bold">
+
+                                الإجمالي:
+
+                            </td>
+
+                            <td class="text-primary fw-bold">
+
+                                {{ "{:,.2f}".format(total_amount or 0) }}
+                                ر.ي
+
+                            </td>
+
+                            <td class="text-success fw-bold">
+
+                                {{ "{:,.2f}".format(total_paid or 0) }}
+                                ر.ي
+
+                            </td>
+
+                            <td class="text-danger fw-bold">
+
+                                {{ "{:,.2f}".format((total_amount or 0) - (total_paid or 0)) }}
+                                ر.ي
+
+                            </td>
+
+                            <td colspan="4"></td>
+
+                        </tr>
+
+                    </tfoot>
+
                 </table>
+
             </div>
+
         </div>
+
+        <!-- ============================ -->
+        <!-- الترقيم -->
+        <!-- ============================ -->
+        {% if purchases and purchases.pages > 1 %}
+
+        <div class="card-footer bg-white">
+
+            <nav>
+
+                <ul class="pagination justify-content-center mb-0">
+
+                    {% if purchases.has_prev %}
+
+                    <li class="page-item">
+
+                        <a class="page-link"
+                           href="{{ url_for('purchases', page=purchases.prev_num) }}">
+
+                            السابق
+
+                        </a>
+
+                    </li>
+
+                    {% endif %}
+
+                    {% for page_num in purchases.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+
+                        {% if page_num %}
+
+                            {% if page_num == purchases.page %}
+
+                            <li class="page-item active">
+
+                                <span class="page-link">
+                                    {{ page_num }}
+                                </span>
+
+                            </li>
+
+                            {% else %}
+
+                            <li class="page-item">
+
+                                <a class="page-link"
+                                   href="{{ url_for('purchases', page=page_num) }}">
+
+                                    {{ page_num }}
+
+                                </a>
+
+                            </li>
+
+                            {% endif %}
+
+                        {% endif %}
+
+                    {% endfor %}
+
+                    {% if purchases.has_next %}
+
+                    <li class="page-item">
+
+                        <a class="page-link"
+                           href="{{ url_for('purchases', page=purchases.next_num) }}">
+
+                            التالي
+
+                        </a>
+
+                    </li>
+
+                    {% endif %}
+
+                </ul>
+
+            </nav>
+
+        </div>
+
+        {% endif %}
+
     </div>
+
 </div>
 
+<!-- ============================ -->
+<!-- البحث -->
+<!-- ============================ -->
 <script>
-    // فلترة الجدول
-    function filterTable() {
-        const searchText = document.getElementById('searchInput').value.toLowerCase();
-        const statusFilter = document.getElementById('statusFilter').value;
-        const paymentFilter = document.getElementById('paymentFilter').value;
-        const rows = document.querySelectorAll('#purchasesTable tbody tr');
 
-        rows.forEach(row => {
-            const status = row.getAttribute('data-status');
-            const payment = row.getAttribute('data-payment');
-            const text = row.innerText.toLowerCase();
+function filterTable() {
 
-            let show = true;
+    const searchText =
+        document.getElementById('searchInput').value.toLowerCase();
 
-            if (searchText && !text.includes(searchText)) {
-                show = false;
-            }
-            if (statusFilter && status !== statusFilter) {
-                show = false;
-            }
-            if (paymentFilter && payment !== paymentFilter) {
-                show = false;
-            }
+    const statusFilter =
+        document.getElementById('statusFilter').value;
 
-            row.style.display = show ? '' : 'none';
-        });
-    }
+    const paymentFilter =
+        document.getElementById('paymentFilter').value;
 
-    document.getElementById('searchInput').addEventListener('keyup', filterTable);
-    document.getElementById('statusFilter').addEventListener('change', filterTable);
-    document.getElementById('paymentFilter').addEventListener('change', filterTable);
-    document.getElementById('resetFilters').addEventListener('click', function() {
-        document.getElementById('searchInput').value = '';
-        document.getElementById('statusFilter').value = '';
-        document.getElementById('paymentFilter').value = '';
-        filterTable();
+    const rows =
+        document.querySelectorAll('#purchasesTable tbody tr');
+
+    rows.forEach(row => {
+
+        const text =
+            row.innerText.toLowerCase();
+
+        const status =
+            row.getAttribute('data-status');
+
+        const payment =
+            row.getAttribute('data-payment');
+
+        let show = true;
+
+        if (searchText && !text.includes(searchText)) {
+            show = false;
+        }
+
+        if (statusFilter && status !== statusFilter) {
+            show = false;
+        }
+
+        if (paymentFilter && payment !== paymentFilter) {
+            show = false;
+        }
+
+        row.style.display = show ? '' : 'none';
+
     });
+
+}
+
+document.getElementById('searchInput')
+        .addEventListener('keyup', filterTable);
+
+document.getElementById('statusFilter')
+        .addEventListener('change', filterTable);
+
+document.getElementById('paymentFilter')
+        .addEventListener('change', filterTable);
+
+document.getElementById('resetFilters')
+        .addEventListener('click', function () {
+
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('paymentFilter').value = '';
+
+    filterTable();
+
+});
+
 </script>
 
-<style>
-    .btn-gradient {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 20px;
-        border-radius: 25px;
-        text-decoration: none;
-        transition: transform 0.3s;
-    }
-    .btn-gradient:hover {
-        transform: translateY(-2px);
-        color: white;
-    }
-    .table th {
-        background-color: #f8f9fa;
-    }
-    .badge {
-        padding: 5px 10px;
-        font-size: 12px;
-    }
+<!-- ============================ -->
+<!-- الطباعة -->
+<!-- ============================ -->
+<style media="print">
+
+.btn,
+.modal,
+.card-footer,
+.card-header {
+    display: none !important;
+}
+
+body {
+    background: #fff !important;
+    padding: 20px !important;
+}
+
+.card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+}
+
+.table {
+    width: 100% !important;
+}
+
 </style>
+
 {% endblock %}
