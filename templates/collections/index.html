@@ -4,41 +4,164 @@
 
 {% block extra_css %}
 <style>
+    .page-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 1.25rem;
+    }
+
+    .section-card {
+        border: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .section-card .card-header {
+        border-bottom: 0;
+        padding: 14px 18px;
+        font-weight: 700;
+    }
+
     .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 15px;
-        padding: 20px;
-        transition: all 0.3s;
-        cursor: pointer;
+        color: #fff;
+        border: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        min-height: 150px;
         height: 100%;
     }
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+
+    .stat-card .card-body {
+        padding: 1.15rem 1rem;
     }
+
     .stat-card i {
-        font-size: 2.5rem;
-        opacity: 0.8;
+        font-size: 2.4rem;
+        opacity: .85;
     }
-    .pending-badge {
-        background-color: #ffc107;
-        color: #333;
+
+    .stat-card h5 {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-top: .4rem;
     }
+
+    .stat-card h3 {
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .form-control,
+    .form-select {
+        border-radius: 12px;
+        min-height: 46px;
+    }
+
+    .btn {
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .badge-soft {
+        border-radius: 999px;
+        padding: .4rem .7rem;
+        font-weight: 700;
+    }
+
+    .table thead th {
+        background: #f8fafc;
+        font-weight: 800;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .table td, .table th {
+        vertical-align: middle;
+    }
+
+    .customer-name {
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .small-muted {
+        color: #64748b;
+        font-size: .92rem;
+    }
+
+    .helper-text {
+        color: #64748b;
+        font-size: .88rem;
+    }
+
+    .progress {
+        height: 24px;
+        border-radius: 999px;
+        background: #e2e8f0;
+    }
+
+    .progress-bar {
+        font-weight: 700;
+        line-height: 24px;
+    }
+
+    .action-group .btn {
+        padding: .4rem .62rem;
+    }
+
+    .modal-content {
+        border: 0;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    }
+
     .approved-badge {
-        background-color: #28a745;
-        color: white;
+        background-color: #16a34a;
+        color: #fff;
     }
+
+    .pending-badge {
+        background-color: #f59e0b;
+        color: #111827;
+    }
+
     .rejected-badge {
-        background-color: #dc3545;
-        color: white;
+        background-color: #dc2626;
+        color: #fff;
+    }
+
+    @media print {
+        .no-print,
+        .modal,
+        .btn,
+        .breadcrumb {
+            display: none !important;
+        }
+
+        body {
+            background: #fff !important;
+        }
+
+        .card,
+        .section-card {
+            box-shadow: none !important;
+        }
+
+        .table thead th {
+            background: #eee !important;
+            color: #000 !important;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="fade-in">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-head no-print">
         <div>
             <h4 class="mb-1">
                 <i class="fas fa-hand-holding-usd text-primary"></i> إدارة التحصيل اليومي
@@ -59,42 +182,54 @@
 
     <div class="row mb-4">
         <div class="col-md-3 mb-3">
-            <div class="stat-card text-center">
-                <i class="fas fa-hand-holding-usd"></i>
-                <h5 class="mt-2">تحصيل اليوم</h5>
-                <h3 class="mb-0">{{ "{:,.2f}".format(today_collections_total) }} ر.ي</h3>
-                <small>المبالغ المحصلة اليوم</small>
+            <div class="card stat-card shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <h5>تحصيل اليوم</h5>
+                    <h3>{{ "{:,.2f}".format(today_collections_total or 0) }} ر.ي</h3>
+                    <small>المبالغ المحصلة اليوم</small>
+                </div>
             </div>
         </div>
+
         <div class="col-md-3 mb-3">
-            <div class="stat-card text-center" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                <i class="fas fa-chart-line"></i>
-                <h5 class="mt-2">إجمالي التحصيلات</h5>
-                <h3 class="mb-0">{{ "{:,.2f}".format(total_collections) }} ر.ي</h3>
-                <small>جميع التحصيلات المعتمدة</small>
+            <div class="card stat-card shadow-sm" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line"></i>
+                    <h5>إجمالي التحصيلات</h5>
+                    <h3>{{ "{:,.2f}".format(total_collections or 0) }} ر.ي</h3>
+                    <small>جميع التحصيلات المعتمدة</small>
+                </div>
             </div>
         </div>
+
         <div class="col-md-3 mb-3">
-            <div class="stat-card text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <i class="fas fa-users"></i>
-                <h5 class="mt-2">العملاء المدينين</h5>
-                <h3 class="mb-0">{{ customers_with_debt }}</h3>
-                <small>عميل عليهم مديونية</small>
+            <div class="card stat-card shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-users"></i>
+                    <h5>العملاء المدينين</h5>
+                    <h3>{{ customers_with_debt or 0 }}</h3>
+                    <small>عميل عليهم مديونية</small>
+                </div>
             </div>
         </div>
+
         <div class="col-md-3 mb-3">
-            <div class="stat-card text-center" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                <i class="fas fa-chart-pie"></i>
-                <h5 class="mt-2">إجمالي المديونيات</h5>
-                <h3 class="mb-0">{{ "{:,.2f}".format(total_debts) }} ر.ي</h3>
-                <small>المبالغ المستحقة</small>
+            <div class="card stat-card shadow-sm" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-pie"></i>
+                    <h5>إجمالي المديونيات</h5>
+                    <h3>{{ "{:,.2f}".format(total_debts or 0) }} ر.ي</h3>
+                    <small>المبالغ المستحقة</small>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-5 mb-4">
-            <div class="card shadow-sm">
+        <!-- نموذج تسجيل تحصيل جديد -->
+        <div class="col-lg-5 mb-4">
+            <div class="card section-card">
                 <div class="card-header bg-primary text-white">
                     <i class="fas fa-plus-circle"></i> تسجيل تحصيل جديد
                 </div>
@@ -108,10 +243,11 @@
                                 <option value="">اختر العميل</option>
                                 {% for customer in debt_customers %}
                                 <option value="{{ customer.id }}" data-balance="{{ customer.balance }}">
-                                    {{ customer.name }} (مديونية: {{ "{:,.2f}".format(customer.balance) }} ر.ي)
+                                    {{ customer.name }}{% if customer.type %} — {{ customer.type }}{% endif %}{% if customer.phone %} — {{ customer.phone }}{% endif %}
                                 </option>
                                 {% endfor %}
                             </select>
+                            <div class="helper-text mt-1" id="customerBalanceInfo"></div>
                         </div>
 
                         <div class="mb-3">
@@ -121,7 +257,7 @@
                             <select name="sale_order_id" class="form-select" id="saleOrderSelect">
                                 <option value="">اختر الفاتورة (اختياري)</option>
                             </select>
-                            <small class="form-text text-muted">اختر الفاتورة المستحقة لتحديث المدفوعات تلقائياً</small>
+                            <small class="text-muted d-block mt-1">اختر الفاتورة المستحقة لتحديث المدفوعات تلقائياً</small>
                         </div>
 
                         <div class="mb-3">
@@ -129,7 +265,7 @@
                                 <i class="fas fa-money-bill-wave"></i> المبلغ المحصل (ر.ي)
                             </label>
                             <input type="number" step="0.01" name="amount" id="amount" class="form-control" required>
-                            <small class="form-text text-muted" id="amountInfo"></small>
+                            <small class="text-muted d-block mt-1" id="amountInfo"></small>
                         </div>
 
                         <div class="mb-3">
@@ -161,15 +297,16 @@
             </div>
         </div>
 
-        <div class="col-md-7 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-danger text-white">
-                    <i class="fas fa-users"></i> قائمة العملاء المدينين
+        <!-- قائمة العملاء المدينين -->
+        <div class="col-lg-7 mb-4">
+            <div class="card section-card">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-users"></i> قائمة العملاء المدينين</span>
                     <span class="badge bg-light text-dark">{{ customers_with_debt }}</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
@@ -186,36 +323,36 @@
                                 {% for customer in debt_customers|sort(attribute='balance', reverse=true) %}
                                 <tr>
                                     <td>{{ loop.index }}</td>
-                                    <td><strong>{{ customer.name }}</strong></td>
+                                    <td class="customer-name">{{ customer.name }}</td>
                                     <td>
                                         {% if customer.type == 'بقالة' %}
-                                            <span class="badge bg-info">بقالة</span>
+                                            <span class="badge bg-info badge-soft">بقالة</span>
                                         {% elif customer.type == 'سوبر ماركت' %}
-                                            <span class="badge bg-primary">سوبر ماركت</span>
+                                            <span class="badge bg-primary badge-soft">سوبر ماركت</span>
                                         {% elif customer.type == 'مطعم' %}
-                                            <span class="badge bg-warning">مطعم</span>
+                                            <span class="badge bg-warning badge-soft">مطعم</span>
                                         {% elif customer.type == 'شركة' %}
-                                            <span class="badge bg-secondary">شركة</span>
+                                            <span class="badge bg-secondary badge-soft">شركة</span>
                                         {% else %}
-                                            <span class="badge bg-secondary">{{ customer.type or 'عميل' }}</span>
+                                            <span class="badge bg-secondary badge-soft">{{ customer.type or 'عميل' }}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ customer.phone or '-' }}</td>
-                                    <td class="text-danger fw-bold">{{ "{:,.2f}".format(customer.balance) }} ر.ي</td>
-                                    <td class="text-muted">{{ "{:,.2f}".format(customer.credit_limit) }} ر.ي</td>
+                                    <td class="text-danger fw-bold">{{ "{:,.2f}".format(customer.balance or 0) }} ر.ي</td>
+                                    <td class="text-muted">{{ "{:,.2f}".format(customer.credit_limit or 0) }} ر.ي</td>
                                     <td>
-                                        {% set percentage = (customer.balance / customer.credit_limit * 100) if customer.credit_limit > 0 else 0 %}
-                                        <div class="progress" style="height: 25px;">
+                                        {% set percentage = (customer.balance / customer.credit_limit * 100) if customer.credit_limit and customer.credit_limit > 0 else 0 %}
+                                        <div class="progress">
                                             <div class="progress-bar {% if percentage > 80 %}bg-danger{% elif percentage > 50 %}bg-warning{% else %}bg-success{% endif %}"
                                                  role="progressbar"
-                                                 style="width: {{ percentage }}%">
+                                                 style="width: {{ percentage if percentage <= 100 else 100 }}%;">
                                                 {{ "%.1f"|format(percentage) }}%
                                             </div>
                                         </div>
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-success"
-                                                onclick="quickPay({{ customer.id }}, '{{ customer.name }}', {{ customer.balance }})">
+                                                onclick="quickPay({{ customer.id }}, '{{ customer.name|e }}', {{ customer.balance or 0 }})">
                                             <i class="fas fa-money-bill"></i> تحصيل
                                         </button>
                                     </td>
@@ -229,13 +366,14 @@
         </div>
     </div>
 
-    <div class="card shadow-sm">
+    <!-- سجل التحصيلات -->
+    <div class="card section-card">
         <div class="card-header bg-info text-white">
             <i class="fas fa-history"></i> سجل التحصيلات
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
@@ -257,37 +395,37 @@
                             <td>{{ collection.collection_date.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>{{ collection.customer.name }}</td>
                             <td>{{ collection.customer.phone or '-' }}</td>
-                            <td>{{ "{:,.2f}".format(collection.amount) }} ر.ي</td>
+                            <td>{{ "{:,.2f}".format(collection.amount or 0) }} ر.ي</td>
                             <td>
                                 {% if collection.sale_order_id %}
-                                    <span class="badge bg-primary">فاتورة #{{ collection.sale_order_id }}</span>
+                                    <span class="badge bg-primary badge-soft">فاتورة #{{ collection.sale_order_id }}</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">غير مرتبطة</span>
+                                    <span class="badge bg-secondary badge-soft">غير مرتبطة</span>
                                 {% endif %}
                             </td>
                             <td>{{ collection.collector.full_name if collection.collector else '-' }}</td>
                             <td>{{ collection.notes or '-' }}</td>
                             <td>
                                 {% if collection.cash_status == 'approved' %}
-                                    <span class="badge approved-badge">✓ معتمدة</span>
+                                    <span class="badge approved-badge badge-soft">✓ معتمدة</span>
                                 {% elif collection.cash_status == 'pending' %}
-                                    <span class="badge pending-badge">⏳ تنتظر الاعتماد</span>
+                                    <span class="badge pending-badge badge-soft">⏳ تنتظر الاعتماد</span>
                                 {% else %}
-                                    <span class="badge rejected-badge">✗ مرفوضة</span>
+                                    <span class="badge rejected-badge badge-soft">✗ مرفوضة</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if collection.cash_status == 'pending' %}
                                     {% if current_user.has_permission(Permission.MANAGE_CASH) %}
-                                    <div class="btn-group btn-group-sm">
+                                    <div class="btn-group btn-group-sm action-group">
                                         <form method="POST" action="{{ url_for('approve_collection', id=collection.id) }}" style="display:inline-block;">
                                             <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('هل تريد اعتماد هذا التحصيل؟')">
-                                                <i class="fas fa-check"></i> اعتماد
+                                                <i class="fas fa-check"></i>
                                             </button>
                                         </form>
                                         <form method="POST" action="{{ url_for('reject_collection', id=collection.id) }}" style="display:inline-block;">
                                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('هل تريد رفض هذا التحصيل؟')">
-                                                <i class="fas fa-times"></i> رفض
+                                                <i class="fas fa-times"></i>
                                             </button>
                                         </form>
                                     </div>
@@ -314,17 +452,21 @@
     const saleOrderSelect = document.getElementById('saleOrderSelect');
     const amountInput = document.getElementById('amount');
     const amountInfo = document.getElementById('amountInfo');
+    const customerBalanceInfo = document.getElementById('customerBalanceInfo');
 
     customerSelect.addEventListener('change', function() {
         const customerId = this.value;
         const selectedOption = this.options[this.selectedIndex];
-        const customerBalance = selectedOption.getAttribute('data-balance');
+        const customerBalance = selectedOption ? selectedOption.getAttribute('data-balance') : null;
 
         if (customerBalance) {
-            amountInfo.innerHTML = `الحد الأقصى للتحصيل: ${parseFloat(customerBalance).toFixed(2)} ر.ي`;
+            const maxBalance = parseFloat(customerBalance);
+            amountInfo.innerHTML = `الحد الأقصى للتحصيل: <strong>${maxBalance.toFixed(2)} ر.ي</strong>`;
+            customerBalanceInfo.innerHTML = `مديونية العميل: <strong>${maxBalance.toFixed(2)} ر.ي</strong>`;
             amountInput.max = customerBalance;
         } else {
             amountInfo.innerHTML = '';
+            customerBalanceInfo.innerHTML = '';
             amountInput.removeAttribute('max');
         }
 
@@ -340,9 +482,31 @@
                         option.textContent = `فاتورة #${invoice.id} - ${invoice.date} - المتبقي: ${invoice.remaining.toFixed(2)} ر.ي`;
                         saleOrderSelect.appendChild(option);
                     });
+                })
+                .catch(() => {
+                    saleOrderSelect.innerHTML = '<option value="">اختر الفاتورة (اختياري)</option>';
                 });
         } else {
             saleOrderSelect.innerHTML = '<option value="">اختر الفاتورة (اختياري)</option>';
+        }
+    });
+
+    saleOrderSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const remaining = selectedOption ? selectedOption.getAttribute('data-remaining') : null;
+
+        if (remaining) {
+            const remainingValue = parseFloat(remaining);
+            amountInput.max = remainingValue;
+            amountInfo.innerHTML = `الحد الأقصى للتحصيل (بناءً على الفاتورة): <strong>${remainingValue.toFixed(2)} ر.ي</strong>`;
+        }
+    });
+
+    amountInput.addEventListener('input', function() {
+        const max = parseFloat(this.max || '0');
+        const value = parseFloat(this.value || '0');
+        if (max > 0 && value > max) {
+            this.value = max;
         }
     });
 
@@ -351,21 +515,11 @@
         customerSelect.dispatchEvent(new Event('change'));
         amountInput.value = balance;
         amountInput.focus();
-        document.querySelector('.col-md-5 .card').scrollIntoView({ behavior: 'smooth' });
+        document.querySelector('.col-lg-5 .card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    if (customerSelect.value) {
+        customerSelect.dispatchEvent(new Event('change'));
     }
 </script>
-
-<style media="print">
-    .btn, .modal, .no-print, .btn-group, .action-buttons {
-        display: none !important;
-    }
-    .card {
-        border: 1px solid #ddd !important;
-        box-shadow: none !important;
-    }
-    body {
-        padding: 20px !important;
-        background: white !important;
-    }
-</style>
 {% endblock %}

@@ -3534,6 +3534,21 @@ def export_account_statement_pdf():
         flash(f'تعذر إنشاء PDF: {str(e)}', 'danger')
         return redirect(url_for('account_statement', type=account_type, account_id=account_id, from_date=from_date, to_date=to_date))
 
+
+# ==================== صفحات تعريفية ودليل الاستخدام ====================
+
+@app.route('/about-developer')
+@login_required
+def about_developer():
+    """صفحة تعريف المطور الغيث"""
+    return render_template('about_developer.html')
+
+@app.route('/user-guide')
+@login_required
+def user_guide():
+    """دليل استخدام التطبيق الاحترافي"""
+    return render_template('user_guide.html')
+
 # ==================== تشغيل التطبيق ====================
 if __name__ == '__main__':
     with app.app_context():

@@ -2,12 +2,168 @@
 
 {% block title %}المنتجات{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 1.25rem;
+    }
+
+    .btn-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 18px;
+        border-radius: 14px;
+        text-decoration: none;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: none;
+        box-shadow: 0 8px 18px rgba(102, 126, 234, 0.22);
+    }
+
+    .btn-gradient:hover {
+        transform: translateY(-2px);
+        color: white;
+        box-shadow: 0 12px 24px rgba(102, 126, 234, 0.28);
+    }
+
+    .stats-row .card {
+        border: 0;
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .stats-row .card-body {
+        padding: 1rem 1.1rem;
+    }
+
+    .stats-row .card h3 {
+        margin-bottom: 0.25rem;
+        font-weight: 800;
+    }
+
+    .stats-row .card small {
+        opacity: 0.9;
+    }
+
+    .table-card {
+        border-radius: 18px;
+        overflow: hidden;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.07);
+    }
+
+    .table-card .card-header {
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .table thead th {
+        background-color: #f8fafc;
+        color: #0f172a;
+        font-weight: 800;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .table td, .table th {
+        vertical-align: middle;
+    }
+
+    .product-name {
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .badge-soft {
+        border-radius: 999px;
+        padding: .42rem .72rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .badge-frozen {
+        background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+        color: white;
+    }
+
+    .badge-normal {
+        background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+        color: white;
+    }
+
+    .search-box .form-control,
+    .search-box .form-select {
+        min-height: 44px;
+        border-radius: 12px;
+    }
+
+    .filter-bar {
+        gap: 12px;
+    }
+
+    .action-group .btn {
+        border-radius: 10px;
+    }
+
+    .modal-content {
+        border: 0;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    }
+
+    .modal-header.bg-primary,
+    .modal-header.bg-danger {
+        border-bottom: 0;
+    }
+
+    .detail-table th {
+        width: 38%;
+        background: #f8fafc;
+        white-space: nowrap;
+    }
+
+    @media print {
+        .no-print,
+        .modal,
+        .btn,
+        .search-box {
+            display: none !important;
+        }
+
+        body {
+            background: #fff !important;
+        }
+
+        .card,
+        .table-card {
+            box-shadow: none !important;
+        }
+
+        .table thead th {
+            background: #eee !important;
+            color: #000 !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="fade-in">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-boxes"></i> إدارة المنتجات</h2>
+    <div class="page-head no-print">
         <div>
-            <button onclick="window.print()" class="btn btn-secondary ml-2">
+            <h2 class="mb-1"><i class="fas fa-boxes"></i> إدارة المنتجات</h2>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button onclick="window.print()" class="btn btn-secondary">
                 <i class="fas fa-print"></i> طباعة
             </button>
             <a href="{{ url_for('add_product') }}" class="btn-gradient">
@@ -17,38 +173,38 @@
     </div>
 
     <!-- بطاقات الإحصائيات -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
+    <div class="row stats-row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-primary text-white shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">إجمالي المنتجات</h5>
+                    <h5 class="card-title mb-1">إجمالي المنتجات</h5>
                     <h3>{{ total_products }}</h3>
                     <small>صنف متنوع</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">إجمالي الكميات</h5>
+                    <h5 class="card-title mb-1">إجمالي الكميات</h5>
                     <h3>{{ total_quantity }}</h3>
                     <small>قطعة</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">قيمة المخزون</h5>
+                    <h5 class="card-title mb-1">قيمة المخزون</h5>
                     <h3>{{ "{:,.2f}".format(total_value) }}</h3>
                     <small>ريال</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-danger text-white shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">منتجات منخفضة</h5>
+                    <h5 class="card-title mb-1">منتجات منخفضة</h5>
                     <h3>{{ low_stock_count }}</h3>
                     <small>تحتاج إعادة تعبئة</small>
                 </div>
@@ -56,14 +212,14 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header bg-white">
-            <div class="row">
+    <div class="card table-card">
+        <div class="card-header search-box no-print">
+            <div class="row filter-bar">
                 <div class="col-md-6">
                     <input type="text" id="searchInput" class="form-control" placeholder="بحث باسم المنتج أو الفئة...">
                 </div>
                 <div class="col-md-3">
-                    <select id="categoryFilter" class="form-control">
+                    <select id="categoryFilter" class="form-select">
                         <option value="">جميع الفئات</option>
                         <option value="مياه">💧 مياه</option>
                         <option value="مشروبات غازية">🥤 مشروبات غازية</option>
@@ -76,7 +232,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <select id="stockFilter" class="form-control">
+                    <select id="stockFilter" class="form-select">
                         <option value="">جميع المنتجات</option>
                         <option value="low">منتجات منخفضة المخزون</option>
                         <option value="frozen">منتجات مجمدة</option>
@@ -84,9 +240,10 @@
                 </div>
             </div>
         </div>
-        <div class="card-body">
+
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover" id="productsTable">
+                <table class="table table-hover align-middle mb-0" id="productsTable">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -103,9 +260,9 @@
                     </thead>
                     <tbody>
                         {% for product in products %}
-                        <tr data-category="{{ product.category }}" data-stock="{{ 'low' if product.quantity < product.min_quantity else 'normal' }}">
+                        <tr data-category="{{ product.category }}" data-stock="{% if product.quantity < product.min_quantity %}low{% else %}normal{% endif %}" data-frozen="{% if product.is_frozen %}1{% else %}0{% endif %}">
                             <td>{{ loop.index }}</td>
-                            <td><strong>{{ product.name }}</strong></td>
+                            <td class="product-name">{{ product.name }}</td>
                             <td>
                                 {% if product.category == 'مياه' %}💧
                                 {% elif product.category == 'مشروبات غازية' %}🥤
@@ -127,16 +284,16 @@
                             <td>{{ product.location or '-' }}</td>
                             <td>
                                 {% if product.is_frozen %}
-                                    <span class="badge bg-info">❄️ مجمد</span>
+                                    <span class="badge-soft badge-frozen">❄️ مجمد</span>
                                     {% if product.freeze_deposit > 0 %}
-                                        <small class="d-block">وديعة: {{ product.freeze_deposit }} ر.ي</small>
+                                        <small class="d-block mt-1 text-muted">وديعة: {{ "{:,.2f}".format(product.freeze_deposit) }} ر.ي</small>
                                     {% endif %}
                                 {% else %}
-                                    <span class="badge bg-success">🌡️ عادي</span>
+                                    <span class="badge-soft badge-normal">🌡️ عادي</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="btn-group" role="group">
+                                <div class="btn-group action-group" role="group">
                                     <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewModal{{ product.id }}">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -151,57 +308,6 @@
                                 </div>
                             </td>
                         </tr>
-
-                        <!-- مودال عرض التفاصيل -->
-                        <div class="modal fade" id="viewModal{{ product.id }}" tabindex="-1">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-primary text-white">
-                                        <h5 class="modal-title">{{ product.name }}</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <table class="table table-bordered">
-                                            <tr><th>الفئة</th><td>{{ product.category }}</td></tr>
-                                            <tr><th>الوحدة</th><td>{{ product.unit }}</td></tr>
-                                            <tr><th>الكمية</th><td>{{ product.quantity }}</td></tr>
-                                            <tr><th>الحد الأدنى</th><td>{{ product.min_quantity }}</td></tr>
-                                            <tr><th>سعر الشراء</th><td>{{ "{:,.2f}".format(product.purchase_price) }} ر.ي</td></tr>
-                                            <tr><th>سعر البيع</th><td>{{ "{:,.2f}".format(product.selling_price) }} ر.ي</td></tr>
-                                            <tr><th>الموقع</th><td>{{ product.location or '-' }}</td></tr>
-                                            {% if product.is_frozen %}
-                                            <tr><th>وديعة التجميد</th><td>{{ "{:,.2f}".format(product.freeze_deposit) }} ر.ي</td></tr>
-                                            {% endif %}
-                                            <tr><th>تاريخ الإضافة</th><td>{{ product.created_at.strftime('%Y-%m-%d') }}</td></tr>
-                                        </table>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                                        <a href="{{ url_for('edit_product_standalone', id=product.id) }}" class="btn btn-primary">تعديل</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- مودال تأكيد الحذف -->
-                        <div class="modal fade" id="deleteModal{{ product.id }}" tabindex="-1">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-danger text-white">
-                                        <h5 class="modal-title">تأكيد الحذف</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p>هل أنت متأكد من حذف المنتج <strong>{{ product.name }}</strong>؟</p>
-                                        <p class="text-danger">تنبيه: هذا الإجراء لا يمكن التراجع عنه!</p>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                        <a href="{{ url_for('delete_product', id=product.id) }}" class="btn btn-danger">حذف</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -209,6 +315,58 @@
         </div>
     </div>
 </div>
+
+<!-- مودالات خارج الجدول -->
+{% for product in products %}
+<div class="modal fade" id="viewModal{{ product.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">{{ product.name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-bordered detail-table mb-0">
+                    <tr><th>الفئة</th><td>{{ product.category }}</td></tr>
+                    <tr><th>الوحدة</th><td>{{ product.unit }}</td></tr>
+                    <tr><th>الكمية</th><td>{{ product.quantity }}</td></tr>
+                    <tr><th>الحد الأدنى</th><td>{{ product.min_quantity }}</td></tr>
+                    <tr><th>سعر الشراء</th><td>{{ "{:,.2f}".format(product.purchase_price) }} ر.ي</td></tr>
+                    <tr><th>سعر البيع</th><td>{{ "{:,.2f}".format(product.selling_price) }} ر.ي</td></tr>
+                    <tr><th>الموقع</th><td>{{ product.location or '-' }}</td></tr>
+                    {% if product.is_frozen %}
+                    <tr><th>وديعة التجميد</th><td>{{ "{:,.2f}".format(product.freeze_deposit) }} ر.ي</td></tr>
+                    {% endif %}
+                    <tr><th>تاريخ الإضافة</th><td>{{ product.created_at.strftime('%Y-%m-%d') }}</td></tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                <a href="{{ url_for('edit_product_standalone', id=product.id) }}" class="btn btn-primary">تعديل</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal{{ product.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">تأكيد الحذف</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>هل أنت متأكد من حذف المنتج <strong>{{ product.name }}</strong>؟</p>
+                <p class="text-danger">تنبيه: هذا الإجراء لا يمكن التراجع عنه!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <a href="{{ url_for('delete_product', id=product.id) }}" class="btn btn-danger">حذف</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
 
 <script>
     function filterTable() {
@@ -220,6 +378,7 @@
         rows.forEach(row => {
             const category = row.getAttribute('data-category');
             const stock = row.getAttribute('data-stock');
+            const frozen = row.getAttribute('data-frozen');
             const text = row.innerText.toLowerCase();
 
             let show = true;
@@ -227,7 +386,7 @@
             if (searchText && !text.includes(searchText)) show = false;
             if (categoryFilter && category !== categoryFilter) show = false;
             if (stockFilter === 'low' && stock !== 'low') show = false;
-            if (stockFilter === 'frozen' && !row.innerText.includes('❄️')) show = false;
+            if (stockFilter === 'frozen' && frozen !== '1') show = false;
 
             row.style.display = show ? '' : 'none';
         });
@@ -237,22 +396,4 @@
     document.getElementById('categoryFilter')?.addEventListener('change', filterTable);
     document.getElementById('stockFilter')?.addEventListener('change', filterTable);
 </script>
-
-<style>
-    .btn-gradient {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 20px;
-        border-radius: 25px;
-        text-decoration: none;
-        transition: transform 0.3s;
-    }
-    .btn-gradient:hover {
-        transform: translateY(-2px);
-        color: white;
-    }
-    .table th {
-        background-color: #f8f9fa;
-    }
-</style>
 {% endblock %}

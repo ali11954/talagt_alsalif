@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}دليل استخدام النظام - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .guide-section {
+        background: white;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        border-right: 4px solid #0d6efd;
+    }
+    .step-number {
+        display: inline-block;
+        width: 35px;
+        height: 35px;
+        background: #0d6efd;
+        color: white;
+        text-align: center;
+        line-height: 35px;
+        border-radius: 50%;
+        font-weight: bold;
+        margin-left: 10px;
+    }
+    .step-title {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+    .info-note {
+        background: #e7f3ff;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+    }
+    .badge-step {
+        background: #6c757d;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+    }
+    .diagram {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 15px;
+        text-align: center;
+        margin: 1.5rem 0;
+        font-family: monospace;
+        font-size: 0.9rem;
+        direction: ltr;
+        overflow-x: auto;
+    }
+    @media print {
+        .no-print, .breadcrumb, .btn, .card-header {
+            display: none !important;
+        }
+        body {
+            padding: 20px;
+            font-size: 12px;
+        }
+        .guide-section {
+            break-inside: avoid;
+            box-shadow: none;
+            border: 1px solid #ddd;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h4><i class="fas fa-book-open text-primary"></i> دليل استخدام النظام (User Guide)</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item active">الدليل</li>
+                </ol>
+            </nav>
+        </div>
+        <button onclick="window.print()" class="btn btn-secondary btn-sm">
+            <i class="fas fa-print"></i> طباعة الدليل
+        </button>
+    </div>
+
+    <div class="alert alert-info no-print">
+        <i class="fas fa-info-circle"></i> هذا الدليل يشرح كيفية استخدام النظام خطوة بخطوة. يمكنك طباعته أو الرجوع إليه في أي وقت.
+    </div>
+
+    <!-- 1. الموردين -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">1</span> إدارة الموردين والحسابات الفرعية</h3>
+            <span class="badge-step">الخطوة الأولى</span>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="fas fa-plus-circle text-success"></i> إضافة مورد جديد</h5>
+                <ol>
+                    <li>من القائمة الجانبية → <strong>الموردين</strong> → <strong>إضافة مورد</strong>.</li>
+                    <li>أدخل بيانات المورد (الاسم، رقم الهاتف، العنوان...).</li>
+                    <li>بعد الحفظ، يتم إنشاء <strong>حساب مالي فرعي</strong> تلقائياً للمورد (مثل <code>20010001</code>).</li>
+                    <li>يمكنك ربط المورد بحسابه الفرعي من خلال صفحة <strong>الحسابات المالية</strong> (اختياري).</li>
+                </ol>
+                <div class="info-note">
+                    <i class="fas fa-lightbulb text-warning"></i> <strong>ملاحظة محاسبية:</strong> الحسابات الفرعية للموردين هي حسابات "خصوم" (Liabilities). زيادة المديونية للمورد تظهر كـ"دائن" في حساب المورد.
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h5><i class="fas fa-chart-line text-info"></i> مراجعة كشف حساب المورد</h5>
+                <ul>
+                    <li>اذهب إلى <strong>الحسابات المالية → كشف حساب عملاء/موردين</strong>.</li>
+                    <li>اختر نوع "مورد" واختر المورد المطلوب.</li>
+                    <li>ستظهر جميع حركاته (مشتريات، سداد) مع الرصيد التراكمي.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="diagram">
+            [ المورد (شركة شملان) ] ←→ [ الحساب الفرعي (20010001) ] ←→ [ كشف حساب ]
+        </div>
+    </div>
+
+    <!-- 2. المنتجات -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">2</span> إدارة المنتجات والمخزون</h3>
+            <span class="badge-step">الخطوة الثانية</span>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="fas fa-boxes"></i> إضافة منتج</h5>
+                <ol>
+                    <li>القائمة الجانبية → <strong>المنتجات</strong> → <strong>إضافة منتج</strong>.</li>
+                    <li>أدخل اسم المنتج، الفئة، سعر الشراء، سعر البيع، والكمية الأولية.</li>
+                    <li>يمكنك تعيين "الحد الأدنى للمخزون" لتنبيهك عند نقص الكمية.</li>
+                    <li>للمنتجات المجمدة: يمكن تفعيل خيار "ثلاجة تجميد" وإضافة "رسوم أمانة".</li>
+                </ol>
+            </div>
+            <div class="col-md-6">
+                <h5><i class="fas fa-chart-simple"></i> متابعة المخزون</h5>
+                <ul>
+                    <li>من صفحة <strong>المخزون</strong> يمكنك رؤية جميع المنتجات وكمياتها.</li>
+                    <li>من صفحة <strong>التقارير → المخزون</strong> يمكنك الحصول على تقرير مفصل بقيمة المخزون.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. المشتريات (شراء آجل / نقدي) -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">3</span> عملية الشراء (آجل / نقدي)</h3>
+            <span class="badge-step">الخطوة الثالثة</span>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h5><i class="fas fa-shopping-cart"></i> إنشاء فاتورة شراء</h5>
+                <ol>
+                    <li>القائمة الجانبية → <strong>المشتريات</strong> → <strong>إضافة شراء</strong>.</li>
+                    <li>اختر المورد ونوع الدفع (نقدي / آجل).</li>
+                    <li>أضف المنتجات والكميات والأسعار.</li>
+                    <li><strong>الشراء النقدي:</strong> يحتاج موافقة الصندوق (لاحقاً) ويتم تحديث المخزون فوراً بعد الموافقة.</li>
+                    <li><strong>الشراء الآجل:</strong> يتم تحديث المخزون فوراً، وتظهر المديونية في حساب المورد. لا يحتاج موافقة الصندوق (إلا إذا كان هناك دفعة مقدمة).</li>
+                </ol>
+                <div class="info-note">
+                    <i class="fas fa-balance-scale"></i> <strong>الأثر المحاسبي:</strong><br>
+                    - شراء آجل: مدين (المخزون 1003) - دائن (حساب المورد الفرعي).<br>
+                    - شراء نقدي بعد الموافقة: مدين (المخزون 1003) - دائن (الصندوق 1001).
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. موافقة الصندوق على المشتريات النقدية -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">4</span> الموافقة على المشتريات (دور الصندوق)</h3>
+            <span class="badge-step">الخطوة الرابعة</span>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h5><i class="fas fa-check-circle text-success"></i> الموافقة على عمليات الشراء النقدية</h5>
+                <ol>
+                    <li>من لديه صلاحية "إدارة الصندوق" يدخل إلى <strong>الصندوق → المعاملات المعلقة</strong>.</li>
+                    <li>يظهر قائمة بالمشتريات النقدية التي تنتظر الموافقة.</li>
+                    <li>بعد المراجعة، يضغط <strong>موافقة</strong>.</li>
+                    <li>تتم المعاملة المحاسبية (تحديث المخزون، إنشاء قيد يومية، تحديث رصيد الصندوق).</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. سداد الموردين -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">5</span> سداد الموردين</h3>
+            <span class="badge-step">الخطوة الخامسة</span>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="fas fa-hand-holding-usd"></i> تسجيل دفعة سداد</h5>
+                <ol>
+                    <li>القائمة → <strong>سداد الموردين</strong>.</li>
+                    <li>اختر المورد المدين والمبلغ وطريقة الدفع.</li>
+                    <li>يمكن ربط السداد بفاتورة شراء محددة.</li>
+                    <li>تسجل الدفعة بحالة "تنتظر الموافقة".</li>
+                </ol>
+            </div>
+            <div class="col-md-6">
+                <h5><i class="fas fa-user-check"></i> موافقة الصندوق على السداد</h5>
+                <ol>
+                    <li>من <strong>الصندوق → المعاملات المعلقة</strong> (أو من صفحة السداد نفسها إذا كان المشرف).</li>
+                    <li>بعد الموافقة، يتم إنشاء قيد يومية (مدين: حساب المورد، دائن: الصندوق).</li>
+                    <li>يتم تخفيض رصيد المورد وتحديث حركات الصندوق.</li>
+                </ol>
+                <div class="info-note">
+                    <i class="fas fa-calculator"></i> مثال: سداد 10,000 ريال لمورد → ينقص رصيد المورد 10,000 وينقص رصيد الصندوق 10,000.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. العملاء والمبيعات -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">6</span> إدارة العملاء والمبيعات</h3>
+            <span class="badge-step">الخطوة السادسة</span>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="fas fa-user-friends"></i> إضافة عميل</h5>
+                <ol>
+                    <li><strong>العملاء → إضافة عميل</strong>.</li>
+                    <li>يتم إنشاء حساب فرعي للعميل (مثل <code>10040001</code>) تلقائياً.</li>
+                </ol>
+            </div>
+            <div class="col-md-6">
+                <h5><i class="fas fa-cart-shopping"></i> إنشاء فاتورة بيع</h5>
+                <ol>
+                    <li><strong>المبيعات → إضافة بيع</strong>.</li>
+                    <li>اختر العميل، نوع الدفع (نقدي/آجل)، والمنتجات.</li>
+                    <li><strong>البيع الآجل:</strong> يتم تحديث المخزون فوراً وتزيد مديونية العميل.</li>
+                    <li><strong>البيع النقدي:</strong> يحتاج موافقة الصندوق، وعند الموافقة يتم تحديث المخزون وإنشاء قيد (مدين: الصندوق، دائن: الإيرادات).</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. التحصيل من العملاء -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">7</span> التحصيل من العملاء</h3>
+            <span class="badge-step">الخطوة السابعة</span>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h5><i class="fas fa-money-bill-wave"></i> تسجيل تحصيل</h5>
+                <ol>
+                    <li><strong>التحصيل → إضافة تحصيل</strong>.</li>
+                    <li>اختر العميل المدين والمبلغ.</li>
+                    <li>يمكن ربط التحصيل بفاتورة بيع محددة.</li>
+                    <li>بعد موافقة الصندوق، يتم إنشاء قيد (مدين: الصندوق، دائن: حساب العميل).</li>
+                </ol>
+                <div class="info-note">
+                    <i class="fas fa-chart-line"></i> كشف حساب العميل يعرض المبيعات الآجلة كـ "مدين" (زيادة المديونية) والتحصيلات كـ "دائن" (نقصان المديونية).
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. قيد اليومية وكشف الحساب -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">8</span> قيد اليومية وكشف الحساب</h3>
+            <span class="badge-step">الخطوة الثامنة</span>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="fas fa-book"></i> قيد اليومية</h5>
+                <ul>
+                    <li>من <strong>الصندوق → قيد اليومية</strong> يمكنك رؤية جميع القيود المحاسبية مع تفاصيلها (مدين/دائن).</li>
+                    <li>يمكنك إضافة قيد يدوي (للتسويات أو الأخطاء) إذا كانت لديك صلاحية.</li>
+                    <li>تتم طباعة القيد أو تصديره بصيغة PDF/Excel.</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h5><i class="fas fa-file-invoice"></i> كشف حساب العميل/المورد</h5>
+                <ul>
+                    <li>من <strong>الحسابات المالية → كشف حساب عملاء/موردين</strong>.</li>
+                    <li>اختر العميل أو المورد وستظهر جميع الحركات المؤثرة على رصيده مع الرصيد التراكمي.</li>
+                    <li>يمكنك تصدير الكشف أو طباعته.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. إقفال اليومية (الصندوق) -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">9</span> إقفال اليومية وإدارة الصندوق</h3>
+            <span class="badge-step">الخطوة التاسعة</span>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h5><i class="fas fa-cash-register"></i> لوحة تحكم الصندوق</h5>
+                <ul>
+                    <li><strong>الصندوق → الرئيسية</strong> تعرض ملخص اليوم: المبيعات النقدية، التحصيلات، المشتريات، سداد الموردين، وصافي الإيرادات.</li>
+                    <li><strong>إغلاق اليومية:</strong> في نهاية اليوم، يمكن لأمين الصندوق إغلاق اليومية (بعد التأكد من الأرصدة). يتم حفظ ملخص اليوم في جدول "الإغلاقات اليومية".</li>
+                    <li><strong>تحديد الرصيد الافتتاحي:</strong> يمكن لأمين الصندوق تحديد رصيد افتتاحي للصندوق في بداية الدورة المالية.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10. التقارير -->
+    <div class="guide-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="step-title"><span class="step-number">10</span> التقارير المالية والإدارية</h3>
+            <span class="badge-step">الخطوة العاشرة</span>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <ul>
+                    <li><strong>الميزانية:</strong> إجمالي الأصول والخصوم.</li>
+                    <li><strong>قائمة الدخل:</strong> الإيرادات والمصروفات (يمكن إضافتها حسب الطلب).</li>
+                    <li><strong>تقرير المبيعات:</strong> تفصيلي حسب التاريخ، العميل، الدفع (نقدي/آجل).</li>
+                    <li><strong>تقرير المشتريات:</strong> حسب المورد والفترة.</li>
+                    <li><strong>تقرير المخزون:</strong> المنتجات والكميات والقيم.</li>
+                    <li><strong>تقرير المديونيات:</strong> قائمة العملاء الذين لديهم رصيد مستحق.</li>
+                </ul>
+                <div class="info-note">
+                    <i class="fas fa-chart-pie"></i> يمكن الوصول إلى التقارير من القائمة الجانبية → <strong>التقارير</strong>.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-success text-center mt-4 no-print">
+        <i class="fas fa-check-circle"></i> انتهى الدليل. نأمل أن تجد النظام سهل الاستخدام ويوفر الوقت والجهد لعملك.
+        <br>
+        <strong>تم إعداد هذا الدليل بواسطة: المهندس / الغيث</strong>
+    </div>
+</div>
+{% endblock %}

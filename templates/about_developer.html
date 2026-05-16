@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}عن المطور - ثلاجة الصليف{% endblock %}
+
+{% block extra_css %}
+<style>
+    .developer-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    .project-card {
+        transition: all 0.3s;
+        border: none;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .project-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+    }
+    .contact-info {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    .whatsapp-link {
+        background: #25D366;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 50px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s;
+    }
+    .whatsapp-link:hover {
+        background: #128C7E;
+        color: white;
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- بطاقة المطور -->
+    <div class="developer-card text-center">
+        <i class="fas fa-code fa-3x mb-3"></i>
+        <h2 class="mb-3">المهندس / الغيث</h2>
+        <p class="lead">مطور أنظمة وتطبيقات ويب | خبير في Flask, SQL, ERP</p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <span class="badge bg-light text-dark p-2"><i class="fas fa-phone"></i> 773014017</span>
+            <span class="badge bg-light text-dark p-2"><i class="fab fa-whatsapp"></i> 711127883</span>
+            <span class="badge bg-light text-dark p-2"><i class="fas fa-envelope"></i> ali.mubark440@gmail.com</span>
+        </div>
+    </div>
+
+    <!-- نبذة -->
+    <div class="row mb-5">
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h4><i class="fas fa-user-astronaut text-primary"></i> من أنا؟</h4>
+                    <p>أنا <strong>الغيث</strong>، مطور أنظمة وتطبيقات ويب بخبرة تمتد لأكثر من 5 سنوات. أتميز بتصميم أنظمة متكاملة تلبي احتياجات الأعمال بدقة واحترافية، مع التركيز على تجربة مستخدم سلسة وأداء عالي.</p>
+                    <p>أعمل على تطوير حلول مخصصة تشمل أنظمة إدارة المبيعات، المشتريات، المخزون، المحاسبة، والموارد البشرية. هدفي هو تحويل الأفكار إلى واقع رقمي يساعد المؤسسات على النمو والازدهار.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h4><i class="fas fa-rocket text-primary"></i> رؤيتي</h4>
+                    <p>أؤمن بأن التكنولوجيا الجيدة هي التي تجعل الحياة أسهل وتوفر الوقت والجهد. لهذا أسعى دائماً لتقديم أنظمة ذكية ومتكاملة تمكن رجال الأعمال من التركيز على تطوير أعمالهم بدلاً من الانشغال بالتفاصيل الروتينية.</p>
+                    <p>نظام "ثلاجة الصليف" هو نموذج حي على هذه الرؤية، حيث يقدم حلاً متكاملاً لإدارة التوزيع والمخزون بآلية محاسبية دقيقة.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- المشاريع المشتركة -->
+    <h3 class="mb-4 text-center"><i class="fas fa-tasks text-primary"></i> مشاريعنا المشتركة</h3>
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card project-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-thermometer-half fa-3x text-warning mb-3"></i>
+                    <h5>ثلاجة الصليف</h5>
+                    <p class="text-muted">نظام إدارة التوزيع والمخزون</p>
+                    <p>منصة متكاملة لإدارة سلاسل التوريد، المبيعات، المشتريات، والمحاسبة للمؤسسات الغذائية والتوزيعية.</p>
+                    <span class="badge bg-primary">Flask</span>
+                    <span class="badge bg-success">SQLAlchemy</span>
+                    <span class="badge bg-info">PostgreSQL</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card project-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x text-success mb-3"></i>
+                    <h5>نظام ERP مستقبلي</h5>
+                    <p class="text-muted">تخطيط موارد المؤسسات</p>
+                    <p>مشروع قيد التطوير يهدف إلى تقديم حل شامل لإدارة الموارد البشرية، الحسابات، والمشاريع في منصة واحدة.</p>
+                    <span class="badge bg-secondary">قيد التطوير</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card project-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-store fa-3x text-info mb-3"></i>
+                    <h5>منصة متاجر إلكترونية</h5>
+                    <p class="text-muted">حلول التجارة الإلكترونية</p>
+                    <p>تصميم وتطوير منصات مبيعات إلكترونية تتكامل مع أنظمة المخزون والمحاسبة.</p>
+                    <span class="badge bg-primary">Python</span>
+                    <span class="badge bg-success">Django</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- معلومات التواصل -->
+    <div class="contact-info text-center">
+        <h4><i class="fas fa-address-card"></i> تواصل معي</h4>
+        <div class="d-flex justify-content-center gap-3 flex-wrap mt-3">
+            <a href="https://wa.me/967711127883" class="whatsapp-link" target="_blank">
+                <i class="fab fa-whatsapp fa-lg"></i> واتساب: 711127883
+            </a>
+            <a href="tel:773014017" class="btn btn-outline-primary">
+                <i class="fas fa-phone"></i> اتصال: 773014017
+            </a>
+            <a href="mailto:ali.mubark440@gmail.com" class="btn btn-outline-danger">
+                <i class="fas fa-envelope"></i> البريد الإلكتروني
+            </a>
+        </div>
+        <hr class="my-4">
+        <div class="row">
+            <div class="col-md-12">
+                <p class="mb-0">جميع الحقوق محفوظة © 2026 | تصميم وتطوير <strong class="text-primary">الغيث</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
