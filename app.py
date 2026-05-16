@@ -2394,6 +2394,14 @@ def delete_journal_entry(id):
 @login_required
 @permission_required(Permission.VIEW_JOURNAL)
 def export_journal_excel():
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from io import BytesIO
+        import pandas as pd
+    except ImportError as e:
+        flash(f'تعذر تصدير Excel: مكتبة {e.name} غير مثبتة.', 'danger')
+        return redirect(url_for('journal_entries'))
     """تصدير Excel بنفس الفلاتر"""
     query = build_journal_entries_query()
     entries = query.order_by(JournalEntry.entry_date.desc()).all()
@@ -2428,6 +2436,11 @@ def export_journal_excel():
 @login_required
 @permission_required(Permission.VIEW_JOURNAL)
 def export_journal_pdf():
+    try:
+        from weasyprint import HTML
+    except ImportError as e:
+        flash(f'تعذر تصدير PDF: مكتبة {e.name} غير مثبتة.', 'danger')
+        return redirect(url_for('journal_entries'))
     """تصدير PDF بنفس الفلاتر"""
     query = build_journal_entries_query()
     entries = query.order_by(JournalEntry.entry_date.desc()).all()
@@ -3376,6 +3389,14 @@ def build_account_statement_data(account_type, account_id, from_date='', to_date
 @login_required
 @permission_required(Permission.VIEW_REPORTS)
 def export_account_statement_excel():
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from io import BytesIO
+        import pandas as pd
+    except ImportError as e:
+        flash(f'تعذر تصدير Excel: مكتبة {e.name} غير مثبتة.', 'danger')
+        return redirect(url_for('journal_entries'))
     account_type = request.args.get('type', 'customer')
     account_id = request.args.get('account_id', type=int)
     from_date = request.args.get('from_date', '')
@@ -3486,6 +3507,11 @@ def export_account_statement_excel():
 @login_required
 @permission_required(Permission.VIEW_REPORTS)
 def export_account_statement_pdf():
+    try:
+        from weasyprint import HTML
+    except ImportError as e:
+        flash(f'تعذر تصدير PDF: مكتبة {e.name} غير مثبتة.', 'danger')
+        return redirect(url_for('journal_entries'))
     account_type = request.args.get('type', 'customer')
     account_id = request.args.get('account_id', type=int)
     from_date = request.args.get('from_date', '')
