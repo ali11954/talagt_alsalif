@@ -303,6 +303,8 @@ class Collection(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     collector_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    sale_order_id = db.Column(db.Integer, db.ForeignKey('sale_orders.id'), nullable=True)  # ✅ أضف هذا السطر
+
     amount = db.Column(db.Float, nullable=False)
     collection_date = db.Column(db.DateTime, default=datetime.utcnow)
     notes = db.Column(db.Text)

@@ -25,6 +25,12 @@
         white-space: nowrap;
     }
 
+    .net-cell {
+        color: #0d6efd;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+
     .badge-type {
         font-size: 10px;
         padding: 3px 8px;
@@ -106,11 +112,13 @@
 <div class="fade-in">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="mb-1"><i class="fas fa-book text-primary"></i> قيد اليومية</h4>
+            <h4 class="mb-1">
+                <i class="fas fa-book text-primary"></i> قيد اليومية
+            </h4>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('cash_index') }}">الصندوق</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('accounts_list') }}">الحسابات المالية</a></li>
                     <li class="breadcrumb-item active">قيد اليومية</li>
                 </ol>
             </nav>
@@ -125,6 +133,10 @@
         </div>
     </div>
 
+    {% set page_debit = entries.items|sum(attribute='total_debit') if entries and entries.items else 0 %}
+    {% set page_credit = entries.items|sum(attribute='total_credit') if entries and entries.items else 0 %}
+    {% set page_net = page_debit - page_credit %}
+
     <!-- بطاقات الإحصائيات -->
     <div class="row mb-4">
         <div class="col-md-3">
@@ -138,7 +150,7 @@
         <div class="col-md-3">
             <div class="card bg-success text-white">
                 <div class="card-body text-center">
-                    <h3 class="mb-0">{{ "{:,.2f}".format(entries.items|sum(attribute='total_debit')) }} ر.ي</h3>
+                    <h3 class="mb-0">{{ "{:,.2f}".format(page_debit) }} ر.ي</h3>
                     <small>إجمالي المدين في الصفحة</small>
                 </div>
             </div>
@@ -146,7 +158,7 @@
         <div class="col-md-3">
             <div class="card bg-danger text-white">
                 <div class="card-body text-center">
-                    <h3 class="mb-0">{{ "{:,.2f}".format(entries.items|sum(attribute='total_credit')) }} ر.ي</h3>
+                    <h3 class="mb-0">{{ "{:,.2f}".format(page_credit) }} ر.ي</h3>
                     <small>إجمالي الدائن في الصفحة</small>
                 </div>
             </div>
@@ -154,8 +166,8 @@
         <div class="col-md-3">
             <div class="card bg-primary text-white">
                 <div class="card-body text-center">
-                    <h3 class="mb-0">{{ entries.items|length }}</h3>
-                    <small>عدد القيود المعروضة</small>
+                    <h3 class="mb-0">{{ "{:,.2f}".format(page_net) }} ر.ي</h3>
+                    <small>صافي الحركة في الصفحة</small>
                 </div>
             </div>
         </div>
@@ -234,7 +246,7 @@
 
     <!-- جدول القيود -->
     <div class="card shadow-sm">
-        <div class="card-body p-0">
+        <div class="card-body p-0 text-dark">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 align-middle">
                     <thead>
@@ -242,21 +254,55 @@
                             <th width="70">#</th>
                             <th width="120">التاريخ</th>
                             <th width="140">رقم الإذن</th>
+                            <th>نوع الحركة</th>
                             <th>البيان</th>
+                            <th>الحسابات</th>
                             <th width="140">مدين</th>
                             <th width="140">دائن</th>
+                            <th width="140">الصافي</th>
                             <th width="170">الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for entry in entries.items %}
+                        {% set net = entry.total_debit - entry.total_credit %}
+                        {% set movement = 'قيد عام' %}
+                        {% if entry.description %}
+                            {% if 'شراء' in entry.description %}
+                                {% set movement = 'شراء' %}
+                            {% elif 'سداد' in entry.description %}
+                                {% set movement = 'سداد' %}
+                            {% elif 'تحصيل' in entry.description %}
+                                {% set movement = 'تحصيل' %}
+                            {% elif 'بيع' in entry.description %}
+                                {% set movement = 'بيع' %}
+                            {% endif %}
+                        {% endif %}
+
                         <tr>
-                            <td>{{ entry.id }}</td>
+                            <td>{{ ((entries.page - 1) * entries.per_page) + loop.index }}</td>
                             <td>{{ entry.entry_date.strftime('%Y-%m-%d') }}</td>
                             <td><strong>{{ entry.reference_number }}</strong></td>
+                            <td>
+                                <span class="badge bg-primary">{{ movement }}</span>
+                            </td>
                             <td>{{ entry.description }}</td>
+                            <td>
+                                {% set accounts = [] %}
+                                {% for detail in entry.details %}
+                                    {% if detail.account %}
+                                        {% set _ = accounts.append(detail.account.account_name) %}
+                                    {% else %}
+                                        {% set _ = accounts.append(detail.account_name) %}
+                                    {% endif %}
+                                {% endfor %}
+                                {{ accounts|join(' - ') }}
+                            </td>
                             <td class="debit-cell">{{ "{:,.2f}".format(entry.total_debit) }} ر.ي</td>
                             <td class="credit-cell">{{ "{:,.2f}".format(entry.total_credit) }} ر.ي</td>
+                            <td class="{% if net == 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                {{ "{:,.2f}".format(net) }} ر.ي
+                            </td>
                             <td>
                                 <div class="action-btns">
                                     <button type="button"
@@ -278,7 +324,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-5">
+                            <td colspan="10" class="text-center text-muted py-5">
                                 <i class="fas fa-book-open fa-2x mb-2 d-block"></i>
                                 لا توجد قيود يومية مسجلة
                                 <br>
@@ -289,9 +335,12 @@
                     </tbody>
                     <tfoot class="table-active">
                         <tr>
-                            <th colspan="4" class="text-end">الإجمالي في الصفحة:</th>
-                            <th class="debit-cell">{{ "{:,.2f}".format(entries.items|sum(attribute='total_debit')) }} ر.ي</th>
-                            <th class="credit-cell">{{ "{:,.2f}".format(entries.items|sum(attribute='total_credit')) }} ر.ي</th>
+                            <th colspan="6" class="text-end">الإجمالي في الصفحة:</th>
+                            <th class="debit-cell">{{ "{:,.2f}".format(page_debit) }} ر.ي</th>
+                            <th class="credit-cell">{{ "{:,.2f}".format(page_credit) }} ر.ي</th>
+                            <th class="{% if page_net == 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                {{ "{:,.2f}".format(page_net) }} ر.ي
+                            </th>
                             <th></th>
                         </tr>
                     </tfoot>
@@ -358,7 +407,7 @@
     <div class="modal fade" id="entryModal{{ entry.id }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header bg-primary text-black">
                     <h5 class="modal-title">
                         <i class="fas fa-book"></i> تفاصيل القيد #{{ entry.id }}
                     </h5>
@@ -395,6 +444,12 @@
                                     <td class="credit-cell">{{ "{:,.2f}".format(entry.total_credit) }} ر.ي</td>
                                 </tr>
                                 <tr>
+                                    <th>الصافي</th>
+                                    <td class="{% if entry.total_debit - entry.total_credit == 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                        {{ "{:,.2f}".format(entry.total_debit - entry.total_credit) }} ر.ي
+                                    </td>
+                                </tr>
+                                <tr>
                                     <th>تم الإنشاء بواسطة</th>
                                     <td>{{ entry.creator.full_name if entry.creator else 'النظام' }}</td>
                                 </tr>
@@ -418,12 +473,10 @@
                                 {% for detail in entry.details %}
                                 <tr>
                                     <td>
-                                        {% if detail.account_type == 'asset' %}100
-                                        {% elif detail.account_type == 'liability' %}200
-                                        {% elif detail.account_type == 'equity' %}300
-                                        {% elif detail.account_type == 'revenue' %}400
-                                        {% elif detail.account_type == 'expense' %}500
-                                        {% else %}---
+                                        {% if detail.account %}
+                                            {{ detail.account.account_code }}
+                                        {% else %}
+                                            -
                                         {% endif %}
                                     </td>
                                     <td>

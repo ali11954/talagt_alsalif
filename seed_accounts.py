@@ -13,8 +13,16 @@ from models import db, FinancialAccount
 app = Flask(__name__)
 # استخدم نفس مسار قاعدة البيانات الموجود في app.py
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "instance", "thaljat_alsaleef.db")}'
+db_path = os.path.join(basedir, 'instance', 'thaljat_alsaleef.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# التأكد من وجود مجلد instance
+instance_dir = os.path.join(basedir, 'instance')
+if not os.path.exists(instance_dir):
+    os.makedirs(instance_dir)
+    print(f"✅ تم إنشاء مجلد {instance_dir}")
+
 db.init_app(app)
 
 # قائمة الحسابات المالية الأساسية
@@ -68,6 +76,7 @@ def seed_accounts():
         db.session.commit()
         print("\n🎉 اكتملت إضافة الحسابات المالية الأساسية.")
         print("📌 يمكنك الآن إضافة العملاء والموردين وربطهم بحسابات فرعية من واجهة التطبيق.")
+        print("📌 لتشغيل التطبيق الرئيسي، قم بتنفيذ: python app.py")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,18 @@
                 </ol>
             </nav>
         </div>
+        <div>
+            <a href="{{ url_for('account_statement') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-file-invoice-dollar"></i> كشف حساب عملاء/موردين
+            </a>
+
+            <a href="{{ url_for('journal_entries') }}" class="btn btn-info btn-sm">
+                <i class="fas fa-book"></i> قيد اليومية
+            </a>
+            <a href="{{ url_for('cash_transactions') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-history"></i> المعاملات
+            </a>
+        </div>
     </div>
 
     <!-- الميزانية -->
@@ -76,7 +88,7 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-                 </table>
+                </table>
             </div>
         </div>
     </div>

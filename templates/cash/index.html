@@ -15,12 +15,6 @@
             </nav>
         </div>
         <div>
-            <a href="{{ url_for('journal_entries') }}" class="btn btn-info btn-sm">
-                <i class="fas fa-book"></i> قيد اليومية
-            </a>
-            <a href="{{ url_for('cash_transactions') }}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-history"></i> المعاملات
-            </a>
             <a href="{{ url_for('cash_approvals') }}" class="btn btn-warning btn-sm">
                 <i class="fas fa-check-double"></i> الموافقات
                 {% if pending_count > 0 %}
@@ -79,7 +73,7 @@
             <div class="card border-success h-100">
                 <div class="card-body text-center">
                     <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
-                    <h4 class="text-success mb-0">{{ "{:,.2f}".format(today_cash_sales) }} ر.ي</h4>
+                    <h4 class="text-success mb-0">{{ "{:,.2f}".format(today_cash_sales|default(0)) }} ر.ي</h4>
                     <p class="text-muted mb-0">مبيعات نقدية</p>
                 </div>
             </div>
@@ -88,7 +82,7 @@
             <div class="card border-warning h-100">
                 <div class="card-body text-center">
                     <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
-                    <h4 class="text-warning mb-0">{{ "{:,.2f}".format(today_credit_sales) }} ر.ي</h4>
+                    <h4 class="text-warning mb-0">{{ "{:,.2f}".format(today_credit_sales|default(0)) }} ر.ي</h4>
                     <p class="text-muted mb-0">مبيعات آجلة</p>
                 </div>
             </div>
@@ -97,7 +91,7 @@
             <div class="card border-info h-100">
                 <div class="card-body text-center">
                     <i class="fas fa-hand-holding-usd fa-2x text-info mb-2"></i>
-                    <h4 class="text-info mb-0">{{ "{:,.2f}".format(today_collections) }} ر.ي</h4>
+                    <h4 class="text-info mb-0">{{ "{:,.2f}".format(today_collections|default(0)) }} ر.ي</h4>
                     <p class="text-muted mb-0">تحصيلات</p>
                 </div>
             </div>
@@ -106,7 +100,7 @@
             <div class="card border-danger h-100">
                 <div class="card-body text-center">
                     <i class="fas fa-shopping-cart fa-2x text-danger mb-2"></i>
-                    <h4 class="text-danger mb-0">{{ "{:,.2f}".format(today_purchases) }} ر.ي</h4>
+                    <h4 class="text-danger mb-0">{{ "{:,.2f}".format(today_purchases|default(0)) }} ر.ي</h4>
                     <p class="text-muted mb-0">مشتريات نقدية</p>
                 </div>
             </div>
@@ -121,19 +115,19 @@
                     <i class="fas fa-arrow-down"></i> الإيرادات اليومية
                 </div>
                 <div class="card-body">
-                    <h3 class="text-success mb-3">{{ "{:,.2f}".format(total_income) }} ر.ي</h3>
+                    <h3 class="text-success mb-3">{{ "{:,.2f}".format(total_income|default(0)) }} ر.ي</h3>
                     <hr>
                     <div class="d-flex justify-content-between mb-2">
                         <span><i class="fas fa-chart-line text-success"></i> مبيعات نقدية:</span>
-                        <span class="fw-bold">{{ "{:,.2f}".format(today_cash_sales) }} ر.ي</span>
+                        <span class="fw-bold">{{ "{:,.2f}".format(today_cash_sales|default(0)) }} ر.ي</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span><i class="fas fa-hand-holding-usd text-info"></i> تحصيلات:</span>
-                        <span class="fw-bold">{{ "{:,.2f}".format(today_collections) }} ر.ي</span>
+                        <span class="fw-bold">{{ "{:,.2f}".format(today_collections|default(0)) }} ر.ي</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span><i class="fas fa-box text-primary"></i> أمانات تجميد:</span>
-                        <span class="fw-bold">{{ "{:,.2f}".format(today_deposits) }} ر.ي</span>
+                        <span class="fw-bold">{{ "{:,.2f}".format(today_deposits|default(0)) }} ر.ي</span>
                     </div>
                 </div>
             </div>
@@ -144,11 +138,15 @@
                     <i class="fas fa-arrow-up"></i> المصروفات اليومية
                 </div>
                 <div class="card-body">
-                    <h3 class="text-danger mb-3">{{ "{:,.2f}".format(total_expense) }} ر.ي</h3>
+                    <h3 class="text-danger mb-3">{{ "{:,.2f}".format(total_expense|default(0)) }} ر.ي</h3>
                     <hr>
                     <div class="d-flex justify-content-between mb-2">
                         <span><i class="fas fa-shopping-cart text-danger"></i> مشتريات نقدية:</span>
-                        <span class="fw-bold">{{ "{:,.2f}".format(today_purchases) }} ر.ي</span>
+                        <span class="fw-bold">{{ "{:,.2f}".format(today_purchases|default(0)) }} ر.ي</span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2 pt-2 border-top">
+                        <span><i class="fas fa-money-bill-wave text-warning"></i> سداد موردين:</span>
+                        <span class="fw-bold">{{ "{:,.2f}".format(today_supplier_payments|default(0)) }} ر.ي</span>
                     </div>
                 </div>
             </div>
@@ -161,8 +159,8 @@
             <div class="card bg-light">
                 <div class="card-body text-center py-4">
                     <h5 class="mb-2">صافي إيرادات اليوم</h5>
-                    <h2 class="display-5 {% if total_net >= 0 %}text-success{% else %}text-danger{% endif %}">
-                        {{ "{:,.2f}".format(total_net) }} ر.ي
+                    <h2 class="display-5 {% if total_net|default(0) >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ "{:,.2f}".format(total_net|default(0)) }} ر.ي
                     </h2>
                     <small class="text-muted">الإيرادات - المصروفات</small>
                 </div>
@@ -170,7 +168,59 @@
         </div>
     </div>
 </div>
-
+<!-- إحصائيات الشهر -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-secondary">
+            <div class="card-header bg-secondary text-white">
+                <i class="fas fa-calendar-alt"></i> إحصائيات الشهر الحالي
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="border-start border-success ps-3">
+                            <small class="text-muted">مبيعات نقدية</small>
+                            <h5 class="text-success mb-0">{{ "{:,.2f}".format(monthly_cash_sales|default(0)) }} ر.ي</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="border-start border-info ps-3">
+                            <small class="text-muted">تحصيلات</small>
+                            <h5 class="text-info mb-0">{{ "{:,.2f}".format(monthly_collections|default(0)) }} ر.ي</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="border-start border-danger ps-3">
+                            <small class="text-muted">مشتريات نقدية</small>
+                            <h5 class="text-danger mb-0">{{ "{:,.2f}".format(monthly_purchases|default(0)) }} ر.ي</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="border-start border-warning ps-3">
+                            <small class="text-muted">سداد موردين</small>
+                            <h5 class="text-warning mb-0">{{ "{:,.2f}".format(monthly_supplier_payments|default(0)) }} ر.ي</h5>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>إجمالي الإيرادات:</strong> {{ "{:,.2f}".format(monthly_total_income|default(0)) }} ر.ي
+                    </div>
+                    <div class="col-md-6">
+                        <strong>إجمالي المصروفات:</strong> {{ "{:,.2f}".format(monthly_total_expense|default(0)) }} ر.ي
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <strong>صافي الشهر:</strong>
+                    <span class="{% if monthly_net|default(0) >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ "{:,.2f}".format(monthly_net|default(0)) }} ر.ي
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <style>
     .card-header i {
         margin-left: 5px;

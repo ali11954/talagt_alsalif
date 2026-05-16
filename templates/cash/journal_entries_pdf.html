@@ -2,118 +2,398 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقرير قيود اليومية</title>
+
     <style>
         @page {
-            size: A4;
-            margin: 15mm;
+            size: A4 landscape;
+            margin: 12mm;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
             font-family: Tahoma, Arial, sans-serif;
             direction: rtl;
             unicode-bidi: embed;
-            font-size: 12px;
             margin: 0;
-            color: #222;
+            padding: 0;
+            color: #1f2937;
+            background: #ffffff;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .page {
+            width: 100%;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2c3e50;
         }
 
-        .header h2 {
-            margin: 0 0 5px 0;
+        .header .brand {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 4px;
         }
 
-        .filters {
-            margin-bottom: 15px;
+        .header .title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #111827;
+            margin: 0 0 4px 0;
+        }
+
+        .header .subtitle {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .meta-card {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 10px;
+            background: #f9fafb;
+        }
+
+        .meta-card .label {
             font-size: 11px;
-            background: #f8f9fa;
-            padding: 10px;
-            border: 1px solid #ddd;
-            line-height: 1.8;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .meta-card .value {
+            font-size: 12px;
+            font-weight: bold;
+            color: #111827;
+            word-break: break-word;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .summary-card {
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #fff;
+            min-height: 74px;
+        }
+
+        .summary-card .label {
+            font-size: 11px;
+            opacity: 0.95;
+            margin-bottom: 6px;
+        }
+
+        .summary-card .value {
+            font-size: 18px;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+
+        .bg-primary { background: #2563eb; }
+        .bg-success { background: #16a34a; }
+        .bg-danger  { background: #dc2626; }
+        .bg-info    { background: #0ea5e9; }
+
+        .table-wrap {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
-        th, td {
-            border: 1px solid #000;
-            padding: 6px;
+        thead th {
+            background: #2c3e50;
+            color: #ffffff;
+            border: 1px solid #1f2937;
+            padding: 8px 6px;
+            font-size: 11px;
             text-align: center;
             vertical-align: middle;
+            white-space: nowrap;
         }
 
-        th {
-            background: #2c3e50;
-            color: #fff;
+        tbody td {
+            border: 1px solid #d1d5db;
+            padding: 7px 6px;
+            font-size: 11px;
+            text-align: center;
+            vertical-align: middle;
+            word-wrap: break-word;
         }
 
-        .debit {
-            color: green;
-            font-weight: bold;
+        tbody tr:nth-child(even) {
+            background: #f9fafb;
         }
 
-        .credit {
-            color: red;
-            font-weight: bold;
-        }
-
-        .summary {
-            margin-top: 15px;
-            font-weight: bold;
+        tbody tr:hover {
+            background: #f3f4f6;
         }
 
         .right {
             text-align: right;
         }
+
+        .left {
+            text-align: left;
+        }
+
+        .debit {
+            color: #16a34a;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .credit {
+            color: #dc2626;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .net-zero {
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        .net-nonzero {
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .badge-asset { background: #dbeafe; color: #1d4ed8; }
+        .badge-liability { background: #fee2e2; color: #b91c1c; }
+        .badge-equity { background: #e5e7eb; color: #374151; }
+        .badge-revenue { background: #dcfce7; color: #15803d; }
+        .badge-expense { background: #fef3c7; color: #92400e; }
+        .badge-default { background: #e5e7eb; color: #374151; }
+
+        tfoot td {
+            border: 1px solid #d1d5db;
+            background: #eef2ff;
+            font-weight: bold;
+            padding: 8px 6px;
+        }
+
+        .footer {
+            margin-top: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 12px;
+            font-size: 11px;
+            color: #6b7280;
+            padding-top: 10px;
+            border-top: 1px solid #d1d5db;
+        }
+
+        .footer .sign {
+            text-align: center;
+            min-width: 180px;
+        }
+
+        .signature-line {
+            margin-top: 30px;
+            border-top: 1px solid #9ca3af;
+            padding-top: 4px;
+            color: #374151;
+        }
+
+        .notes {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #4b5563;
+        }
+
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body>
+<div class="page">
 
-<div class="header">
-    <h2>تقرير قيود اليومية</h2>
-    <div>ثلاجة الصليف</div>
+    <div class="header">
+        <div class="brand">ثلاجة الصليف</div>
+        <div class="title">تقرير قيود اليومية</div>
+        <div class="subtitle">تقرير محاسبي مفصل حسب معايير العرض الحالية</div>
+    </div>
+
+    <div class="meta-grid">
+        <div class="meta-card">
+            <div class="label">من تاريخ</div>
+            <div class="value">{{ from_date or '---' }}</div>
+        </div>
+        <div class="meta-card">
+            <div class="label">إلى تاريخ</div>
+            <div class="value">{{ to_date or '---' }}</div>
+        </div>
+        <div class="meta-card">
+            <div class="label">اسم الحساب</div>
+            <div class="value">{{ account_name or '---' }}</div>
+        </div>
+        <div class="meta-card">
+            <div class="label">رقم الحساب</div>
+            <div class="value">{{ account_code or '---' }}</div>
+        </div>
+    </div>
+
+    {% set total_debit = entries|sum(attribute='total_debit') if entries else 0 %}
+    {% set total_credit = entries|sum(attribute='total_credit') if entries else 0 %}
+    {% set net_total = total_debit - total_credit %}
+
+    <div class="summary-grid">
+        <div class="summary-card bg-primary">
+            <div class="label">إجمالي القيود</div>
+            <div class="value">{{ entries|length if entries else 0 }}</div>
+        </div>
+        <div class="summary-card bg-success">
+            <div class="label">إجمالي المدين</div>
+            <div class="value">{{ "{:,.2f}".format(total_debit or 0) }} ر.ي</div>
+        </div>
+        <div class="summary-card bg-danger">
+            <div class="label">إجمالي الدائن</div>
+            <div class="value">{{ "{:,.2f}".format(total_credit or 0) }} ر.ي</div>
+        </div>
+        <div class="summary-card bg-info">
+            <div class="label">الصافي</div>
+            <div class="value">{{ "{:,.2f}".format(net_total or 0) }} ر.ي</div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 45px;">#</th>
+                    <th style="width: 95px;">التاريخ</th>
+                    <th style="width: 140px;">رقم الإذن</th>
+                    <th style="width: 90px;">النوع</th>
+                    <th>البيان</th>
+                    <th style="width: 150px;">الحسابات</th>
+                    <th style="width: 120px;">مدين</th>
+                    <th style="width: 120px;">دائن</th>
+                    <th style="width: 120px;">الصافي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                {% set net = (entry.total_debit or 0) - (entry.total_credit or 0) %}
+                {% set movement = 'قيد عام' %}
+                {% if entry.description %}
+                    {% if 'شراء' in entry.description %}
+                        {% set movement = 'شراء' %}
+                    {% elif 'سداد' in entry.description %}
+                        {% set movement = 'سداد' %}
+                    {% elif 'تحصيل' in entry.description %}
+                        {% set movement = 'تحصيل' %}
+                    {% elif 'بيع' in entry.description %}
+                        {% set movement = 'بيع' %}
+                    {% endif %}
+                {% endif %}
+
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ entry.entry_date.strftime('%Y-%m-%d %H:%M') if entry.entry_date else '' }}</td>
+                    <td><strong>{{ entry.reference_number }}</strong></td>
+                    <td>
+                        <span class="badge
+                            {% if movement == 'شراء' %}badge-expense
+                            {% elif movement == 'سداد' %}badge-liability
+                            {% elif movement == 'تحصيل' %}badge-revenue
+                            {% elif movement == 'بيع' %}badge-asset
+                            {% else %}badge-default
+                            {% endif %}">
+                            {{ movement }}
+                        </span>
+                    </td>
+                    <td class="right">{{ entry.description }}</td>
+                    <td class="right">
+                        {% set accounts = [] %}
+                        {% for detail in entry.details %}
+                            {% if detail.account %}
+                                {% set _ = accounts.append(detail.account.account_name) %}
+                            {% else %}
+                                {% set _ = accounts.append(detail.account_name) %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ accounts|join(' - ') if accounts else '-' }}
+                    </td>
+                    <td class="debit">{{ "{:,.2f}".format(entry.total_debit or 0) }} ر.ي</td>
+                    <td class="credit">{{ "{:,.2f}".format(entry.total_credit or 0) }} ر.ي</td>
+                    <td class="{% if net == 0 %}net-zero{% else %}net-nonzero{% endif %}">
+                        {{ "{:,.2f}".format(net or 0) }} ر.ي
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="right">لا توجد قيود مطابقة للفترة المحددة</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="6" class="right">الإجمالي</td>
+                    <td class="debit">{{ "{:,.2f}".format(total_debit or 0) }} ر.ي</td>
+                    <td class="credit">{{ "{:,.2f}".format(total_credit or 0) }} ر.ي</td>
+                    <td class="{% if net_total == 0 %}net-zero{% else %}net-nonzero{% endif %}">
+                        {{ "{:,.2f}".format(net_total or 0) }} ر.ي
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="notes">
+        <div>ملاحظة: عمود الصافي يوضح الفرق بين المدين والدائن لكل قيد، وهو الأوضح لمراجعة أثر القيد على الرصيد.</div>
+    </div>
+
+    <div class="footer">
+        <div>
+            <div>تاريخ الطباعة: {{ print_date or '' }}</div>
+            <div>عدد الصفحات: 1</div>
+        </div>
+        <div class="sign">
+            <div class="signature-line">المراجعة المحاسبية</div>
+        </div>
+    </div>
+
 </div>
-
-<div class="filters">
-    <div><strong>من تاريخ:</strong> {{ from_date or '---' }}</div>
-    <div><strong>إلى تاريخ:</strong> {{ to_date or '---' }}</div>
-    <div><strong>اسم الحساب:</strong> {{ account_name or '---' }}</div>
-    <div><strong>رقم الحساب:</strong> {{ account_code or '---' }}</div>
-</div>
-
-<table>
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>التاريخ</th>
-            <th>رقم الإذن</th>
-            <th>البيان</th>
-            <th>مدين</th>
-            <th>دائن</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for entry in entries %}
-        <tr>
-            <td>{{ entry.id }}</td>
-            <td>{{ entry.entry_date.strftime('%Y-%m-%d %H:%M') if entry.entry_date else '' }}</td>
-            <td>{{ entry.reference_number }}</td>
-            <td class="right">{{ entry.description }}</td>
-            <td class="debit">{{ "{:,.2f}".format(entry.total_debit or 0) }}</td>
-            <td class="credit">{{ "{:,.2f}".format(entry.total_credit or 0) }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-<div class="summary">
-    إجمالي القيود: {{ entries|length }}
-</div>
-
 </body>
 </html>

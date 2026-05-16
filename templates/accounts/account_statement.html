@@ -1,0 +1,408 @@
+{# templates/reports/account_statement.html #}
+{% extends "base.html" %}
+
+{% block title %}كشف حساب العملاء والموردين{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-title {
+        font-weight: 800;
+        letter-spacing: -0.3px;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 18px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .stat-card {
+        border: 0;
+        border-radius: 18px;
+        color: #fff;
+        overflow: hidden;
+        position: relative;
+        min-height: 118px;
+    }
+
+    .stat-card .card-body {
+        padding: 1.15rem 1.2rem;
+    }
+
+    .stat-card small {
+        opacity: 0.9;
+    }
+
+    .stat-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .stat-success { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-danger  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+    .entity-banner {
+        border-radius: 18px;
+        border: 1px solid #e5e7eb;
+        background: linear-gradient(180deg, #ffffff, #f8fafc);
+    }
+
+    .entity-meta {
+        color: #64748b;
+        font-size: .95rem;
+    }
+
+    .table thead th {
+        background: #0f172a;
+        color: #fff;
+        border: 0;
+        white-space: nowrap;
+    }
+
+    .table td, .table th {
+        vertical-align: middle;
+    }
+
+    .badge-soft {
+        border-radius: 999px;
+        padding: .45rem .75rem;
+        font-weight: 600;
+    }
+
+    .select-modern, .input-modern {
+        border-radius: 14px;
+        min-height: 46px;
+    }
+
+    .btn-modern {
+        border-radius: 14px;
+        padding: .7rem 1rem;
+        font-weight: 600;
+    }
+
+    .muted-box {
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 1.25rem;
+    }
+
+    .filter-section label {
+        font-weight: 600;
+        margin-bottom: .35rem;
+    }
+
+    @media print {
+        .no-print, .breadcrumb, .btn, .glass-card, .filter-section {
+            display: none !important;
+        }
+
+        body {
+            background: #fff !important;
+        }
+
+        .entity-banner, .table, .card {
+            box-shadow: none !important;
+        }
+
+        .table thead th {
+            background: #eee !important;
+            color: #000 !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h3 class="page-title mb-1"><i class="fas fa-file-invoice-dollar text-primary"></i> كشف الحساب</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">الرئيسية</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('accounts_list') }}">الحسابات المالية</a></li>
+                    <li class="breadcrumb-item active">كشف الحساب</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-secondary btn-modern">
+                <i class="fas fa-print"></i> طباعة
+            </button>
+        </div>
+    </div>
+
+    <div class="card glass-card mb-4 filter-section no-print">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('account_statement') }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="typeSelect" class="form-label">نوع الحساب</label>
+                        <select id="typeSelect" name="type" class="form-select select-modern">
+                            <option value="customer" {% if account_type == 'customer' %}selected{% endif %}>عميل</option>
+                            <option value="supplier" {% if account_type == 'supplier' %}selected{% endif %}>مورد</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3" id="customerBox">
+                        <label for="customerSelect" class="form-label">اختيار العميل</label>
+                       <select id="customerSelect" class="form-select">
+    <option value="">اختر العميل</option>
+    {% for customer in customers %}
+        <option value="{{ customer.id }}" {% if account_type == 'customer' and selected_entity and selected_entity.id == customer.id %}selected{% endif %}>
+            {{ customer.name }}{% if customer.type %} — {{ customer.type }}{% endif %}{% if customer.phone %} — {{ customer.phone }}{% endif %}
+        </option>
+    {% endfor %}
+</select>
+                    </div>
+
+                    <div class="col-md-3" id="supplierBox">
+                        <label for="supplierSelect" class="form-label">اختيار المورد / الشركة</label>
+                        <select id="supplierSelect" class="form-select">
+    <option value="">اختر المورد</option>
+    {% for supplier in suppliers %}
+        <option value="{{ supplier.id }}" {% if account_type == 'supplier' and selected_entity and selected_entity.id == supplier.id %}selected{% endif %}>
+            {{ supplier.name }}{% if supplier.contact_person %} — {{ supplier.contact_person }}{% endif %}{% if supplier.phone %} — {{ supplier.phone }}{% endif %}
+        </option>
+    {% endfor %}
+</select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label for="fromDate" class="form-label">من تاريخ</label>
+                        <input type="date" id="fromDate" name="from_date" value="{{ from_date }}" class="form-control input-modern">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label for="toDate" class="form-label">إلى تاريخ</label>
+                        <input type="date" id="toDate" name="to_date" value="{{ to_date }}" class="form-control input-modern">
+                    </div>
+<div class="col-md-12 d-flex gap-2 flex-wrap mt-2">
+    <button type="submit" class="btn btn-primary btn-modern">
+        <i class="fas fa-search"></i> عرض الكشف
+    </button>
+
+    <a href="{{ url_for('account_statement') }}" class="btn btn-light btn-modern border">
+        <i class="fas fa-undo"></i> إعادة تعيين
+    </a>
+
+    <a href="{{ url_for('export_account_statement_excel',
+            type=account_type,
+            account_id=selected_entity.id if selected_entity else '',
+            from_date=from_date,
+            to_date=to_date) }}"
+       class="btn btn-success btn-modern">
+        <i class="fas fa-file-excel"></i> تصدير Excel
+    </a>
+
+    <a href="{{ url_for('export_account_statement_pdf',
+            type=account_type,
+            account_id=selected_entity.id if selected_entity else '',
+            from_date=from_date,
+            to_date=to_date) }}"
+       class="btn btn-danger btn-modern">
+        <i class="fas fa-file-pdf"></i> تصدير PDF
+    </a>
+</div>
+    {% if selected_entity %}
+    <div class="card entity-banner mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <h4 class="mb-0">{{ selected_entity.name }}</h4>
+                        <span class="badge bg-primary badge-soft">{{ selected_entity_kind }}</span>
+                    </div>
+                    <div class="entity-meta">
+                        {% if selected_entity.phone %}
+                            <div><i class="fas fa-phone"></i> {{ selected_entity.phone }}</div>
+                        {% endif %}
+                        {% if selected_entity.address %}
+                            <div><i class="fas fa-location-dot"></i> {{ selected_entity.address }}</div>
+                        {% endif %}
+                        {% if selected_entity_kind == 'العميل' and selected_entity.type %}
+                            <div><i class="fas fa-tag"></i> {{ selected_entity.type }}</div>
+                        {% endif %}
+                        {% if selected_account_code %}
+                            <div><i class="fas fa-code"></i> الحساب المحاسبي: {{ selected_account_code }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <div class="mb-2">
+                        <span class="badge bg-dark badge-soft">الرصيد الحالي</span>
+                    </div>
+                    <h3 class="mb-0 {% if entity_current_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ "{:,.2f}".format(entity_current_balance or 0) }} ر.ي
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card stat-primary">
+                <div class="card-body">
+                    <small>الرصيد الافتتاحي</small>
+                    <h4 class="mb-0 mt-2">{{ "{:,.2f}".format(opening_balance or 0) }} ر.ي</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card stat-success">
+                <div class="card-body">
+                    <small>إجمالي المدين</small>
+                    <h4 class="mb-0 mt-2">{{ "{:,.2f}".format(period_debit or 0) }} ر.ي</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card stat-warning">
+                <div class="card-body">
+                    <small>إجمالي الدائن</small>
+                    <h4 class="mb-0 mt-2">{{ "{:,.2f}".format(period_credit or 0) }} ر.ي</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card stat-danger">
+                <div class="card-body">
+                    <small>الرصيد الختامي</small>
+                    <h4 class="mb-0 mt-2">{{ "{:,.2f}".format(closing_balance or 0) }} ر.ي</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <strong><i class="fas fa-list"></i> حركة الحساب</strong>
+            <span class="text-muted">
+                {% if from_date or to_date %}
+                    الفترة المحددة
+                {% else %}
+                    كل الحركات
+                {% endif %}
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th width="70">#</th>
+                            <th width="150">التاريخ</th>
+                            <th width="160">رقم المرجع</th>
+                            <th>البيان</th>
+                            <th width="130">مدين</th>
+                            <th width="130">دائن</th>
+                            <th width="150">الرصيد المتحرك</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if transactions %}
+                            {% for tx in transactions %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ tx.transaction_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <span class="badge bg-secondary badge-soft">
+                                        {{ tx.reference_type or '-' }}{% if tx.reference_id %} #{{ tx.reference_id }}{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>{{ tx.description or '-' }}</strong>
+                                    {% if tx.account %}
+                                        <div class="small text-muted">{{ tx.account.account_name }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-success fw-bold">
+                                    {% if tx.transaction_type == 'debit' %}
+                                        {{ "{:,.2f}".format(tx.amount or 0) }} ر.ي
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-danger fw-bold">
+                                    {% if tx.transaction_type == 'credit' %}
+                                        {{ "{:,.2f}".format(tx.amount or 0) }} ر.ي
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="{% if tx.running_balance >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                    {{ "{:,.2f}".format(tx.running_balance or 0) }} ر.ي
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7">
+                                    <div class="muted-box text-center my-3">
+                                        <i class="fas fa-folder-open fa-2x mb-2 text-muted"></i>
+                                        <div class="fw-semibold">لا توجد حركات لعرضها</div>
+                                        <div class="text-muted small">اختر عميلًا أو موردًا ثم اضغط عرض الكشف</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="4" class="text-end">الإجمالي</th>
+                            <th class="text-success">{{ "{:,.2f}".format(period_debit or 0) }} ر.ي</th>
+                            <th class="text-danger">{{ "{:,.2f}".format(period_credit or 0) }} ر.ي</th>
+                            <th class="{% if closing_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {{ "{:,.2f}".format(closing_balance or 0) }} ر.ي
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const typeSelect = document.getElementById('typeSelect');
+    const customerBox = document.getElementById('customerBox');
+    const supplierBox = document.getElementById('supplierBox');
+    const customerSelect = document.getElementById('customerSelect');
+    const supplierSelect = document.getElementById('supplierSelect');
+
+    function syncEntityBoxes() {
+        const type = typeSelect.value;
+
+        if (type === 'customer') {
+            customerBox.style.display = '';
+            supplierBox.style.display = 'none';
+            customerSelect.name = 'account_id';
+            supplierSelect.removeAttribute('name');
+        } else {
+            customerBox.style.display = 'none';
+            supplierBox.style.display = '';
+            supplierSelect.name = 'account_id';
+            customerSelect.removeAttribute('name');
+        }
+    }
+
+    typeSelect.addEventListener('change', syncEntityBoxes);
+    syncEntityBoxes();
+
+    // عند اختيار المورد، نرسل قيمة المورد في select الخاص به
+    supplierSelect.addEventListener('change', function() {
+        if (typeSelect.value === 'supplier') {
+            this.name = 'account_id';
+        }
+    });
+
+    customerSelect.addEventListener('change', function() {
+        if (typeSelect.value === 'customer') {
+            this.name = 'account_id';
+        }
+    });
+</script>
+{% endblock %}

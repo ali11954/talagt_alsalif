@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 14mm 12mm 16mm 12mm;
+        }
+
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+            direction: rtl;
+            unicode-bidi: embed;
+            font-size: 12px;
+            color: #111827;
+            margin: 0;
+            background: #ffffff;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #fff;
+            padding: 18px 22px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+        }
+
+        .header .title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 4px 0;
+        }
+
+        .header .sub {
+            font-size: 12px;
+            opacity: .9;
+        }
+
+        .meta {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+        }
+
+        .meta td {
+            border: 1px solid #d1d5db;
+            padding: 8px 10px;
+            vertical-align: top;
+        }
+
+        .meta td.label {
+            width: 18%;
+            background: #f3f4f6;
+            font-weight: bold;
+        }
+
+        .panel {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+        .panel-head {
+            background: #f8fafc;
+            padding: 10px 12px;
+            font-weight: 700;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .grid {
+            display: table;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 10px;
+            margin-bottom: 10px;
+        }
+
+        .stat {
+            display: table-cell;
+            width: 25%;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+
+        .stat .label {
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .stat .value {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        table.tx {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table.tx th, table.tx td {
+            border: 1px solid #111827;
+            padding: 7px 6px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        table.tx th {
+            background: #0f172a;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .debit { color: #047857; font-weight: bold; }
+        .credit { color: #b91c1c; font-weight: bold; }
+        .balance-pos { color: #047857; font-weight: bold; }
+        .balance-neg { color: #b91c1c; font-weight: bold; }
+
+        .summary {
+            margin-top: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .summary table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .summary td {
+            border: 1px solid #d1d5db;
+            padding: 8px 10px;
+        }
+
+        .footer {
+            margin-top: 18px;
+            padding-top: 12px;
+            border-top: 1px solid #d1d5db;
+            font-size: 10.5px;
+            color: #6b7280;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        .no-data {
+            padding: 18px;
+            text-align: center;
+            color: #6b7280;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">كشف الحساب</div>
+    <div class="sub">ثلاجة الصليف - كشف حساب العملاء والموردين</div>
+</div>
+
+<table class="meta">
+    <tr>
+        <td class="label">نوع الحساب</td>
+        <td>{{ 'عميل' if account_type == 'customer' else 'مورد' }}</td>
+        <td class="label">الاسم</td>
+        <td>{{ selected_entity.name if selected_entity else '-' }}</td>
+    </tr>
+    <tr>
+        <td class="label">الحساب المحاسبي</td>
+        <td>{{ selected_account_code or '-' }}</td>
+        <td class="label">الرصيد الحالي</td>
+        <td>{{ "{:,.2f}".format(current_balance or 0) }} ر.ي</td>
+    </tr>
+    <tr>
+        <td class="label">الرصيد الافتتاحي</td>
+        <td>{{ "{:,.2f}".format(opening_balance or 0) }} ر.ي</td>
+        <td class="label">الرصيد الختامي</td>
+        <td>{{ "{:,.2f}".format(closing_balance or 0) }} ر.ي</td>
+    </tr>
+    <tr>
+        <td class="label">الفترة</td>
+        <td colspan="3">
+            من {{ from_date or '---' }} إلى {{ to_date or '---' }}
+        </td>
+    </tr>
+</table>
+
+<div class="grid">
+    <div class="stat">
+        <div class="label">إجمالي المدين</div>
+        <div class="value">{{ "{:,.2f}".format(period_debit or 0) }} ر.ي</div>
+    </div>
+    <div class="stat">
+        <div class="label">إجمالي الدائن</div>
+        <div class="value">{{ "{:,.2f}".format(period_credit or 0) }} ر.ي</div>
+    </div>
+    <div class="stat">
+        <div class="label">عدد الحركات</div>
+        <div class="value">{{ transactions|length }}</div>
+    </div>
+    <div class="stat">
+        <div class="label">الجهة</div>
+        <div class="value">{{ selected_entity_kind if selected_entity_kind else '-' }}</div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-head">تفاصيل الحركات</div>
+    {% if transactions %}
+    <table class="tx">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>التاريخ</th>
+                <th>المرجع</th>
+                <th>البيان</th>
+                <th>مدين</th>
+                <th>دائن</th>
+                <th>الرصيد المتحرك</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tx in transactions %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ tx.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ tx.reference }}</td>
+                <td style="text-align:right">{{ tx.description }}</td>
+                <td class="debit">{% if tx.debit > 0 %}{{ "{:,.2f}".format(tx.debit) }} ر.ي{% else %}-{% endif %}</td>
+                <td class="credit">{% if tx.credit > 0 %}{{ "{:,.2f}".format(tx.credit) }} ر.ي{% else %}-{% endif %}</td>
+                <td class="{% if tx.running_balance >= 0 %}balance-pos{% else %}balance-neg{% endif %}">
+                    {{ "{:,.2f}".format(tx.running_balance or 0) }} ر.ي
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">لا توجد حركات لعرضها ضمن الفترة المحددة</div>
+    {% endif %}
+</div>
+
+<div class="summary">
+    <table>
+        <tr>
+            <td><strong>الإجمالي المدين:</strong> {{ "{:,.2f}".format(period_debit or 0) }} ر.ي</td>
+            <td><strong>الإجمالي الدائن:</strong> {{ "{:,.2f}".format(period_credit or 0) }} ر.ي</td>
+            <td><strong>الرصيد الختامي:</strong> {{ "{:,.2f}".format(closing_balance or 0) }} ر.ي</td>
+        </tr>
+    </table>
+</div>
+
+<div class="footer">
+    <div>تم إنشاء هذا التقرير بواسطة نظام ثلاجة الصليف</div>
+    <div>التصميم والإعداد: الغيث لتصميم التطبيقات والانظمة</div>
+    <div>773014017 - 711127883</div>
+</div>
+
+</body>
+</html>
